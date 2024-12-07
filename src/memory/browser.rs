@@ -1,7 +1,11 @@
 // Temporarily allow dead code so I keep my sanity
 #![allow(dead_code, unused_variables)]
 
-use std::{ffi::c_void, fs};
+use std::{
+	ffi::c_void,
+	fs,
+	mem::{self, replace},
+};
 
 use sscanf::scanf;
 
@@ -59,7 +63,7 @@ impl Browser {
 			let size = region.end - region.begin;
 
 			let local: iovec = iovec {
-				iov_base: region.data.as_mut_ptr() as *mut c_void,
+				iov_base: region.data.borrow().as_ptr() as *mut c_void,
 				iov_len: size as usize,
 			};
 			let remote: iovec = iovec {
@@ -88,8 +92,37 @@ impl Browser {
 		Ok(())
 	}
 
-	fn update_region(&self) {
-		todo!("update_region");
+	fn update_region(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+		let mut new_regions: Vec<MemoryRegion> = Vec::with_capacity(self.all_regions.len() * 2);
+		Browser::snap_mem_regions(self.pid, &mut new_regions, false)?;
+
+		// Merge the current into the new (if possible) sorted
+		let mut hint = 0;
+		for region in &mut new_regions {
+			for idx in hint..self.all_regions.len() {
+				let cur_region = &self.all_regions[idx];
+
+				if cur_region.begin == region.begin && cur_region.end == region.end {
+					{
+						// TODO: Test this as I don't trust it yet
+						// TODO: maybe find a way to just replace instead of swap
+						let mut new_data = region.data.borrow_mut();
+						let mut old_data = cur_region.data.borrow_mut();
+						mem::swap(&mut *new_data, &mut *old_data);
+					}
+
+					hint += 1;
+					break;
+				}
+			}
+
+			if !self.lazy_alloc && region.data.get_mut().len() == 0 {
+				*region.data.get_mut() = Box::new(Vec::with_capacity(region.data_sz as usize));
+				region.dirty = true;
+			}
+		}
+
+		Ok(())
 	}
 
 	fn find_once(
