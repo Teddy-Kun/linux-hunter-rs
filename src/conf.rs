@@ -1,51 +1,58 @@
 use clap::Parser;
+use linux_rhunter_lib::err::Error;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Config {
 	#[arg(short = 'm', long)]
-	show_monsters: bool,
+	pub show_monsters: bool,
 
 	#[arg(short = 'c', long)]
-	show_crowns: bool,
+	pub show_crowns: bool,
 
 	#[arg(short = 's', long)]
-	save: String,
+	pub save: Option<String>,
 
 	#[arg(short = 'l', long)]
-	load: String,
+	pub load: Option<String>,
 
 	#[arg(long)]
-	no_direct_mem: bool,
+	pub no_direct_mem: bool,
 
 	#[arg(short = 'f', long)]
-	f_display: String,
+	pub f_display: Option<String>,
 
 	#[arg(long)]
-	mhw_pid: u64,
+	pub mhw_pid: Option<i32>,
 
 	#[arg(long)]
-	debug_ptrs: bool,
+	pub debug_ptrs: bool,
 
 	#[arg(long)]
-	debug_all: bool,
+	pub debug_all: bool,
 
 	#[arg(long)]
-	mem_dirty_opt: bool,
+	pub mem_dirty_opt: bool,
 
 	#[arg(long)]
-	no_lazy_alloc: bool,
+	pub no_lazy_alloc: bool,
 
 	#[arg(short = 'r', long)]
-	refresh: u16,
+	pub refresh: Option<u16>,
 
 	#[arg(long)]
-	no_color: bool,
+	pub no_color: bool,
 
 	#[arg(long)]
-	compact_display: bool,
+	pub compact_display: bool,
 }
 
-pub fn get_config() -> Config {
-	Config::parse()
+pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
+	let conf = Config::parse();
+
+	if conf.save.is_some() && conf.load.is_some() {
+		return Err(Error::new("Can't specify both 'load' and 'save' options").into());
+	}
+
+	Ok(conf)
 }

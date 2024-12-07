@@ -3,27 +3,27 @@ use std::fmt::Display;
 use backtrace::Backtrace;
 
 #[derive(Debug)]
-pub struct Error<'a> {
-	message: &'a str,
+pub struct Error {
+	message: String,
 	trace: Backtrace,
 }
 
-impl<'a> Error<'a> {
-	pub fn new(message: &'a str) -> Self {
+impl Error {
+	pub fn new(message: &str) -> Self {
 		Self {
-			message,
+			message: message.to_string(),
 			trace: Backtrace::new(),
 		}
 	}
 }
 
-impl<'a> Display for Error<'a> {
+impl Display for Error {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.message)
 	}
 }
 
-impl<'a> std::error::Error for Error<'a> {
+impl std::error::Error for Error {
 	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
 		None
 	}

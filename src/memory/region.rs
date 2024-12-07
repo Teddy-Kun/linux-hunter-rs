@@ -11,12 +11,7 @@ pub struct MemoryRegion {
 }
 
 impl MemoryRegion {
-	fn new(
-		begin: u64,
-		end: u64,
-		debug_info: &str,
-		alloc: bool,
-	) -> Result<MemoryRegion, Error<'static>> {
+	fn new(begin: u64, end: u64, debug_info: &str, alloc: bool) -> Result<MemoryRegion, Error> {
 		todo!("new");
 	}
 }
