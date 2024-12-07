@@ -1,15 +1,18 @@
 // Temporarily allow dead code so I keep my sanity
 #![allow(dead_code, unused_variables)]
 
-use std::fs;
+use std::{ffi::c_void, fs};
 
 use sscanf::scanf;
 
 use crate::memory::{pattern::Pattern, region::MemoryRegion};
-use nix::unistd::Pid;
+use nix::{
+	libc::{iovec, process_vm_readv},
+	unistd::Pid,
+};
 
 #[derive(Debug)]
-pub struct Browser<'a> {
+pub struct Browser {
 	pbyte: u8,
 	pid: Pid,
 
@@ -17,10 +20,10 @@ pub struct Browser<'a> {
 	lazy_alloc: bool,
 	direct_mem: bool,
 
-	all_regions: Vec<&'a MemoryRegion>,
+	all_regions: Vec<MemoryRegion>,
 }
 
-impl<'a> Browser<'a> {
+impl Browser {
 	// internal functions
 	fn snap_mem_regions(
 		&self,
@@ -49,8 +52,42 @@ impl<'a> Browser<'a> {
 		Ok(())
 	}
 
-	fn snap_pid(&self) {
-		todo!("snap_pid");
+	fn snap_pid(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+		let mut all_regions = self.all_regions.clone();
+		self.snap_mem_regions(&mut all_regions, true)?;
+		self.all_regions = all_regions;
+
+		for region in &mut self.all_regions {
+			let size = region.end - region.beg;
+
+			let local: iovec = iovec {
+				iov_base: region.data.as_mut_ptr() as *mut c_void,
+				iov_len: size as usize,
+			};
+			let remote: iovec = iovec {
+				iov_base: region.beg as *mut c_void,
+				iov_len: size as usize,
+			};
+
+			let e = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
+			if e < 0 {
+				eprintln!(
+					"Region: {} Error with process_vm_readv ({})",
+					region.debug_info, e
+				);
+			}
+
+			if e as u64 != size {
+				eprintln!(
+					"Region: {} Read {} bytes instead of {}",
+					region.debug_info, e, size
+				);
+				region.data_sz = e;
+			}
+			region.dirty = false;
+		}
+
+		Ok(())
 	}
 
 	fn update_region(&self) {

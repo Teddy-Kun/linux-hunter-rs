@@ -1,7 +1,7 @@
 mod conf;
 
 use conf::get_config;
-use linux_rhunter_lib::{
+use linux_hunter_lib::{
 	memory::{
 		browser::Browser,
 		pattern::{

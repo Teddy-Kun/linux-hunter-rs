@@ -1,5 +1,5 @@
 use clap::Parser;
-use linux_rhunter_lib::err::Error;
+use linux_hunter_lib::err::Error;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
