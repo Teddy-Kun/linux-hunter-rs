@@ -1,6 +1,6 @@
 use crate::err::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MemoryRegion {
 	pub beg: u64,
 	pub end: u64,

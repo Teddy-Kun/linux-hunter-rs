@@ -26,13 +26,13 @@ pub struct Browser {
 impl Browser {
 	// internal functions
 	fn snap_mem_regions(
-		&self,
+		pid: Pid,
 		region: &mut Vec<MemoryRegion>,
 		alloc_mem: bool,
 	) -> Result<(), Box<dyn std::error::Error>> {
 		*region = Vec::new();
 
-		let maps_path = String::from("/proc/") + self.pid.to_string().as_str() + "/maps";
+		let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";
 		let maps = fs::read_to_string(&maps_path)?;
 
 		for line in maps.lines() {
@@ -53,9 +53,7 @@ impl Browser {
 	}
 
 	fn snap_pid(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-		let mut all_regions = self.all_regions.clone();
-		self.snap_mem_regions(&mut all_regions, true)?;
-		self.all_regions = all_regions;
+		Browser::snap_mem_regions(self.pid, &mut self.all_regions, true)?;
 
 		for region in &mut self.all_regions {
 			let size = region.end - region.beg;
