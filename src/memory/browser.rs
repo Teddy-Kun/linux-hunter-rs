@@ -36,14 +36,14 @@ impl Browser {
 		let maps = fs::read_to_string(&maps_path)?;
 
 		for line in maps.lines() {
-			match scanf!(line, "{u64:x}-{u64:x} {&str} {u64:x} {&str} {i64}") {
+			match scanf!(line, "{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}") {
 				Err(_) => continue,
 				Ok((begin, end, permissions, _offset, _device, inode)) => {
 					if inode != 0 || !permissions.starts_with("r") {
 						continue;
 					}
 
-					let reg = MemoryRegion::new(begin, end, line, alloc_mem)?;
+					let reg = MemoryRegion::new(begin, end, line, alloc_mem);
 					region.push(reg);
 				}
 			};
@@ -56,14 +56,14 @@ impl Browser {
 		Browser::snap_mem_regions(self.pid, &mut self.all_regions, true)?;
 
 		for region in &mut self.all_regions {
-			let size = region.end - region.beg;
+			let size = region.end - region.begin;
 
 			let local: iovec = iovec {
 				iov_base: region.data.as_mut_ptr() as *mut c_void,
 				iov_len: size as usize,
 			};
 			let remote: iovec = iovec {
-				iov_base: region.beg as *mut c_void,
+				iov_base: region.begin as *mut c_void,
 				iov_len: size as usize,
 			};
 
@@ -75,7 +75,7 @@ impl Browser {
 				);
 			}
 
-			if e as u64 != size {
+			if e as usize != size {
 				eprintln!(
 					"Region: {} Read {} bytes instead of {}",
 					region.debug_info, e, size
