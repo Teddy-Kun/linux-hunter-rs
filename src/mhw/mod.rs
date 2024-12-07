@@ -41,10 +41,9 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 				continue;
 			}
 
-			if let Some(ptr_mhw) = contents.find(MHW_EXE) {
-				if ptr_mhw == contents.len() - MHW_EXE.len() {
-					return Ok(Pid::from_raw(name.parse::<i32>()?));
-				}
+			if let Some(_) = contents.find(MHW_EXE) {
+				// TODO: implement the simple path logic
+				return Ok(Pid::from_raw(name.parse::<i32>()?));
 			}
 		}
 	}
