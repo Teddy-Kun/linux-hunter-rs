@@ -1,5 +1,4 @@
 mod conf;
-mod memory;
 
 use conf::get_config;
 

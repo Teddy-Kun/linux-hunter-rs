@@ -1,0 +1,70 @@
+#[derive(Debug)]
+pub struct Pattern<'a> {
+	bytes: &'a str,
+	name: &'a str,
+}
+
+#[derive(Debug)]
+pub struct MemoryPatters<'a> {
+	bytes: Vec<u8>,
+	matches: Vec<&'a OffLen>,
+	name: &'a str,
+	mem_location: isize,
+}
+
+impl<'a> MemoryPatters<'a> {
+	fn pattern() {
+		todo!("pattern");
+	}
+
+	fn new(p: &Pattern) {
+		todo!("new");
+	}
+}
+
+#[derive(Debug)]
+struct OffLen {
+	src_offset: usize,
+	tgt_offset: usize,
+	len: usize,
+}
+
+const PLAYER_NAME: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3",
+	name: "PlayerName",
+};
+
+const CURRENT_PLAYER_NAME: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8",
+	name: "CurrentPlayerName",
+};
+
+const PLAYER_DAMAGE: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 04 33 C9",
+	name: "PlayerDamage",
+};
+
+const MONSTER: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 0D",
+	name: "Monster",
+};
+
+const PLAYER_BUFF: Pattern = Pattern {
+	bytes: "48 8B 05 ?? ?? ?? ?? 41 8B 94 00 ?? ?? ?? ?? 89 57",
+	name: "PlayerBuff",
+};
+
+const LOBBY_STATUS: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E ?? F3 0F 10 86 ?? ?? ?? ?? F3 0F 58 86 ?? ?? ?? ?? F3 0F 11 86 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E",
+	name: "LobbyStatus",
+};
+
+const EMETTA: Pattern = Pattern {
+	bytes: "45 6D 65 74 74 61",
+	name: "Emetta",
+};
+
+const PLAYER_NAME_LINUX: Pattern = Pattern {
+	bytes: "48 8B 0D ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24 60 48 83 C4 50 5F C3",
+	name: "PlayerNameLinux",
+};
