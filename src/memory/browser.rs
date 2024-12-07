@@ -1,3 +1,10 @@
+// Temporarily allow dead code so I keep my sanity
+#![allow(dead_code, unused_variables)]
+
+use std::fs;
+
+use sscanf::scanf;
+
 use crate::memory::{pattern::Pattern, region::MemoryRegion};
 use nix::unistd::Pid;
 
@@ -15,8 +22,31 @@ pub struct Browser<'a> {
 
 impl<'a> Browser<'a> {
 	// internal functions
-	fn snap_mem_regions(&self, region: &MemoryRegion, alloc_mem: bool) {
-		todo!("snap_mem_regions");
+	fn snap_mem_regions(
+		&self,
+		region: &mut Vec<MemoryRegion>,
+		alloc_mem: bool,
+	) -> Result<(), Box<dyn std::error::Error>> {
+		*region = Vec::new();
+
+		let maps_path = String::from("/proc/") + self.pid.to_string().as_str() + "/maps";
+		let maps = fs::read_to_string(&maps_path)?;
+
+		for line in maps.lines() {
+			match scanf!(line, "{u64:x}-{u64:x} {&str} {u64:x} {&str} {i64}") {
+				Err(_) => continue,
+				Ok((begin, end, permissions, _offset, _device, inode)) => {
+					if inode != 0 || !permissions.starts_with("r") {
+						continue;
+					}
+
+					let reg = MemoryRegion::new(begin, end, line, alloc_mem)?;
+					region.push(reg);
+				}
+			};
+		}
+
+		Ok(())
 	}
 
 	fn snap_pid(&self) {

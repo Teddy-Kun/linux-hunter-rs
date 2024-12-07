@@ -2,13 +2,18 @@ mod conf;
 
 use conf::get_config;
 use linux_rhunter_lib::{
-	memory::pattern::{
-		MemoryPattern, CURRENT_PLAYER_NAME, EMETTA, LOBBY_STATUS, MONSTER, PLAYER_BUFF,
-		PLAYER_NAME, PLAYER_NAME_LINUX,
+	memory::{
+		browser::Browser,
+		pattern::{
+			MemoryPattern, CURRENT_PLAYER_NAME, EMETTA, LOBBY_STATUS, MONSTER, PLAYER_BUFF,
+			PLAYER_NAME, PLAYER_NAME_LINUX,
+		},
 	},
 	mhw::find_mhw_pid,
 };
+
 use nix::unistd::Pid;
+use std::{thread::sleep, time::Duration};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -26,7 +31,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mhw_pid;
 	if conf.mhw_pid.is_none() && conf.load.is_none() {
-		mhw_pid = find_mhw_pid()?;
+		println!("Trying to detect MHW PID");
+		let mut attempts = 0;
+		loop {
+			match find_mhw_pid() {
+				Ok(pid) => {
+					mhw_pid = pid;
+					break;
+				}
+
+				Err(e) => {
+					attempts += 1;
+					if attempts > 50 {
+						return Err(e);
+					}
+					sleep(Duration::from_millis(200));
+				}
+			}
+		}
 	} else {
 		match conf.mhw_pid {
 			Some(pid) => mhw_pid = Pid::from_raw(pid as i32),
@@ -36,7 +58,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Found pid: {}", mhw_pid);
 
-	// start with browser
+	let browser = Browser::new(
+		mhw_pid,
+		conf.mem_dirty_opt,
+		!conf.no_lazy_alloc,
+		!conf.no_direct_mem,
+	);
+
+	println!("Browser: {:#?}", browser);
 
 	Ok(())
 }
