@@ -1,8 +1,12 @@
+mod conf;
+mod memory;
+
 use conf::get_config;
 
-mod conf;
-
 fn main() {
-    let _ = get_config();
-    println!("Hello, world!");
+	let _ = get_config();
+
+	// scan memory
+
+	println!("Hello, world!");
 }
