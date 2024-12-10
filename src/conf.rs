@@ -54,5 +54,14 @@ pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
 		return Err(Error::new("Can't specify both 'load' and 'save' options").into());
 	}
 
+	if conf.load.is_some() && !conf.no_direct_mem {
+		return Err(Error::new("The option -l,--load is incompatible with direct memory, please specify also --no-direct-mem").into());
+	}
+
+	if conf.f_display.is_some() {
+		// remove this after it is implemented
+		todo!("f_display");
+	}
+
 	Ok(conf)
 }
