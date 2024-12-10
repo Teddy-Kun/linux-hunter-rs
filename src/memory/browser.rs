@@ -9,6 +9,7 @@ use nix::{
 	libc::{iovec, process_vm_readv},
 	unistd::Pid,
 };
+use nom::{bytes::complete::tag, IResult};
 use sscanf::scanf;
 use std::rc::Rc;
 use std::{ffi::c_void, fs};
@@ -118,22 +119,10 @@ impl Browser {
 		Ok(())
 	}
 
-	fn find_once(
-		&self,
-		pattern: &MemoryPattern,
-		buf: *const u8,
-		sz: usize,
-		loc_hint: *mut u8,
-		debug_all: bool,
-	) -> Result<usize, Box<dyn std::error::Error>> {
-		let mut first = true;
-		for m in &pattern.matches {
-			if first {
-				first = false;
-			} else {
-			}
-		}
-		todo!("find_once");
+	// TODO: potentially increase speed
+	fn find_once<'a>(&self, pattern: &'a [u8], to_search: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+		// let pat = &pattern.bytes;
+		tag(b"hello")(to_search)
 	}
 
 	fn verify_regions(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -214,25 +203,8 @@ impl Browser {
 				continue;
 			}
 
-			let mut buf = region.data.as_ptr();
-			let loc_hint: *mut u8 = std::ptr::null_mut();
-			let mut data_sz = region.data_sz as usize;
-
-			loop {
-				let size = self.find_once(pattern, buf, data_sz, loc_hint, debug_all)?;
-
-				let loc_diff = unsafe { loc_hint.offset_from(buf) };
-
-				if size > 0 {
-					return Ok(size + loc_diff as usize + region.begin);
-				}
-
-				if region.data_sz <= 0 || loc_diff >= region.data_sz {
-					break;
-				}
-
-				buf = loc_hint;
-				data_sz = (region.data_sz - loc_diff) as usize;
+			if let Ok((remaining, matched)) = self.find_once(&pattern.bytes, &region.data) {
+				return Ok(remaining.len());
 			}
 		}
 

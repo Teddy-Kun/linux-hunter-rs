@@ -7,8 +7,8 @@ use linux_hunter_lib::{
 	memory::{
 		browser::Browser,
 		pattern::{
-			MemoryPattern, CURRENT_PLAYER_NAME, EMETTA, LOBBY_STATUS, MONSTER, PLAYER_BUFF,
-			PLAYER_NAME, PLAYER_NAME_LINUX,
+			find_player_name, MemoryPattern, CURRENT_PLAYER_NAME, EMETTA, LOBBY_STATUS, MONSTER,
+			PLAYER_BUFF, PLAYER_NAME, PLAYER_NAME_LINUX,
 		},
 	},
 	mhw::find_mhw_pid,
@@ -78,13 +78,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("finding main AoB entry points...");
 
 	let mut all_patterns: Vec<MemoryPattern> = vec![
-		MemoryPattern::new(&PLAYER_NAME)?,
-		MemoryPattern::new(&CURRENT_PLAYER_NAME)?,
-		MemoryPattern::new(&MONSTER)?,
-		MemoryPattern::new(&PLAYER_BUFF)?,
-		MemoryPattern::new(&EMETTA)?,
-		MemoryPattern::new(&PLAYER_NAME_LINUX)?,
-		MemoryPattern::new(&LOBBY_STATUS)?,
+		MemoryPattern::new("PlayerName", find_player_name)?,
+		// MemoryPattern::new(&CURRENT_PLAYER_NAME)?,
+		// MemoryPattern::new(&MONSTER)?,
+		// MemoryPattern::new(&PLAYER_BUFF)?,
+		// MemoryPattern::new(&EMETTA)?,
+		// MemoryPattern::new(&PLAYER_NAME_LINUX)?,
+		// MemoryPattern::new(&LOBBY_STATUS)?,
 	];
 	browser.find_patterns(&mut all_patterns, conf.debug_all);
 
