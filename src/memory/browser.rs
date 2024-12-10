@@ -121,14 +121,11 @@ impl Browser {
 	fn find_once(
 		&self,
 		pattern: &MemoryPattern,
-		buf: &mut [u8],
+		buf: *const u8,
 		sz: usize,
-		hint: u8,
+		loc_hint: *mut u8,
 		debug_all: bool,
 	) -> Result<usize, Box<dyn std::error::Error>> {
-		// TODO: this function potentially needs to have its logic completely redone
-		// come back later to check if hint is used in the parent function after calling
-
 		let mut first = true;
 		for m in &pattern.matches {
 			if first {
@@ -206,8 +203,40 @@ impl Browser {
 		region.dirty = false;
 	}
 
-	fn find_first(&self, pattern: &MemoryPattern, debug_all: bool, start_addr: usize) -> isize {
-		todo!("find_once");
+	fn find_first(
+		&self,
+		pattern: &MemoryPattern,
+		debug_all: bool,
+		start_addr: usize,
+	) -> Result<usize, Box<dyn std::error::Error>> {
+		for region in &self.all_regions {
+			if region.end < start_addr {
+				continue;
+			}
+
+			let mut buf = region.data.as_ptr();
+			let loc_hint: *mut u8 = std::ptr::null_mut();
+			let mut data_sz = region.data_sz as usize;
+
+			loop {
+				let size = self.find_once(pattern, buf, data_sz, loc_hint, debug_all)?;
+
+				let loc_diff = unsafe { loc_hint.offset_from(buf) };
+
+				if size > 0 {
+					return Ok(size + loc_diff as usize + region.begin);
+				}
+
+				if region.data_sz <= 0 || loc_diff >= region.data_sz {
+					break;
+				}
+
+				buf = loc_hint;
+				data_sz = (region.data_sz - loc_diff) as usize;
+			}
+		}
+
+		Err(Error::new("Pattern not found").into())
 	}
 
 	fn direct_mem_read(
@@ -295,7 +324,14 @@ impl Browser {
 
 	pub fn find_patterns(&self, patterns: &mut [MemoryPattern], debug_all: bool) {
 		for pattern in patterns {
-			pattern.mem_location = self.find_first(pattern, debug_all, 0);
+			match self.find_first(pattern, debug_all, 0) {
+				Ok(size) => {
+					pattern.mem_location = size as isize;
+				}
+				Err(_) => {
+					pattern.mem_location = -1;
+				}
+			}
 		}
 	}
 
