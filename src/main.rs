@@ -1,4 +1,5 @@
 mod conf;
+mod ui;
 
 use conf::get_config;
 use linux_hunter_lib::{
@@ -19,6 +20,7 @@ use std::{
 	thread::sleep,
 	time::Duration,
 };
+use ui::draw;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -114,9 +116,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		run_clone.store(false, std::sync::atomic::Ordering::Relaxed);
 	})?;
 
+	let mut terminal = ratatui::init();
 	// main loop
 	while run.load(std::sync::atomic::Ordering::Relaxed) {
-		println!("TODO: {:?}", all_patterns)
+		terminal.draw(draw)?;
 	}
 
 	Ok(())
