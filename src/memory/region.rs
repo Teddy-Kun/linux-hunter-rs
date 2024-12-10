@@ -1,11 +1,11 @@
-use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct MemoryRegion {
 	pub begin: usize,
 	pub end: usize,
 	pub debug_info: String,
-	pub data: RefCell<Box<Vec<u8>>>,
+	pub data: Rc<Vec<u8>>,
 	pub data_sz: isize,
 	pub dirty: bool,
 }
@@ -21,7 +21,7 @@ impl MemoryRegion {
 			begin,
 			end,
 			debug_info: debug_info.to_string(),
-			data: RefCell::new(Box::new(vec)),
+			data: Rc::new(vec),
 			data_sz: (end - begin) as isize,
 			dirty: true,
 		}

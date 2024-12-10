@@ -1,19 +1,17 @@
 // Temporarily allow dead code so I keep my sanity
 #![allow(dead_code, unused_variables)]
 
-use std::{
-	ffi::c_void,
-	fs,
-	mem::{self, replace},
-};
+use super::pattern::MemoryPattern;
+use crate::err::Error;
+use crate::memory::region::MemoryRegion;
 
-use sscanf::scanf;
-
-use crate::memory::{pattern::Pattern, region::MemoryRegion};
 use nix::{
 	libc::{iovec, process_vm_readv},
 	unistd::Pid,
 };
+use sscanf::scanf;
+use std::rc::Rc;
+use std::{ffi::c_void, fs};
 
 #[derive(Debug)]
 pub struct Browser {
@@ -31,10 +29,10 @@ impl Browser {
 	// internal functions
 	fn snap_mem_regions(
 		pid: Pid,
-		region: &mut Vec<MemoryRegion>,
+		regions: &mut Vec<MemoryRegion>,
 		alloc_mem: bool,
 	) -> Result<(), Box<dyn std::error::Error>> {
-		*region = Vec::new();
+		regions.clear();
 
 		let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";
 		let maps = fs::read_to_string(&maps_path)?;
@@ -48,7 +46,7 @@ impl Browser {
 					}
 
 					let reg = MemoryRegion::new(begin, end, line, alloc_mem);
-					region.push(reg);
+					regions.push(reg);
 				}
 			};
 		}
@@ -63,7 +61,7 @@ impl Browser {
 			let size = region.end - region.begin;
 
 			let local: iovec = iovec {
-				iov_base: region.data.borrow().as_ptr() as *mut c_void,
+				iov_base: region.data.as_ptr() as *mut c_void,
 				iov_len: size as usize,
 			};
 			let remote: iovec = iovec {
@@ -71,20 +69,21 @@ impl Browser {
 				iov_len: size as usize,
 			};
 
-			let e = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
-			if e < 0 {
+			let read_size =
+				unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
+			if read_size < 0 {
 				eprintln!(
 					"Region: {} Error with process_vm_readv ({})",
-					region.debug_info, e
+					region.debug_info, read_size
 				);
 			}
 
-			if e as usize != size {
+			if read_size as usize != size {
 				eprintln!(
 					"Region: {} Read {} bytes instead of {}",
-					region.debug_info, e, size
+					region.debug_info, read_size, size
 				);
-				region.data_sz = e;
+				region.data_sz = read_size;
 			}
 			region.dirty = false;
 		}
@@ -92,7 +91,7 @@ impl Browser {
 		Ok(())
 	}
 
-	fn update_region(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+	fn update_regions(&mut self) -> Result<(), Box<dyn std::error::Error>> {
 		let mut new_regions: Vec<MemoryRegion> = Vec::with_capacity(self.all_regions.len() * 2);
 		Browser::snap_mem_regions(self.pid, &mut new_regions, false)?;
 
@@ -100,24 +99,18 @@ impl Browser {
 		let mut hint = 0;
 		for region in &mut new_regions {
 			for idx in hint..self.all_regions.len() {
-				let cur_region = &self.all_regions[idx];
-
-				if cur_region.begin == region.begin && cur_region.end == region.end {
-					{
-						// TODO: Test this as I don't trust it yet
-						// TODO: maybe find a way to just replace instead of swap
-						let mut new_data = region.data.borrow_mut();
-						let mut old_data = cur_region.data.borrow_mut();
-						mem::swap(&mut *new_data, &mut *old_data);
-					}
+				if self.all_regions[idx].begin == region.begin
+					&& self.all_regions[idx].end == region.end
+				{
+					region.data = self.all_regions[idx].data.clone();
 
 					hint += 1;
 					break;
 				}
 			}
 
-			if !self.lazy_alloc && region.data.get_mut().len() == 0 {
-				*region.data.get_mut() = Box::new(Vec::with_capacity(region.data_sz as usize));
+			if !self.lazy_alloc && region.data.len() == 0 {
+				region.data = Rc::new(Vec::with_capacity(region.end - region.begin));
 				region.dirty = true;
 			}
 		}
@@ -127,46 +120,169 @@ impl Browser {
 
 	fn find_once(
 		&self,
-		pattern: &Pattern,
+		pattern: &MemoryPattern,
 		buf: &mut [u8],
 		sz: usize,
 		hint: u8,
 		debug_all: bool,
-	) -> isize {
+	) -> Result<usize, Box<dyn std::error::Error>> {
+		// TODO: this function potentially needs to have its logic completely redone
+		// come back later to check if hint is used in the parent function after calling
+
+		let mut first = true;
+		for m in &pattern.matches {
+			if first {
+				first = false;
+			} else {
+			}
+		}
 		todo!("find_once");
 	}
 
-	fn verify_regions(&self) {
-		todo!("verify_regions");
+	fn verify_regions(&self) -> Result<(), Box<dyn std::error::Error>> {
+		let mut prev_beg: usize = 0;
+		let mut prev_end: usize = 0;
+		let mut first = true;
+
+		for region in &self.all_regions {
+			if first {
+				prev_beg = region.begin;
+				prev_end = region.end;
+
+				first = false;
+				continue;
+			}
+
+			if region.begin < prev_beg {
+				return Err(Error::new("Invalid region sequence - order").into());
+			}
+			if region.begin < prev_end {
+				return Err(Error::new("Invalid region sequence - overlap").into());
+			}
+
+			prev_beg = region.begin;
+			prev_end = region.end;
+		}
+
+		Ok(())
 	}
 
-	fn refresh_region(&self, region: &MemoryRegion) {
-		todo!("refresh_region");
+	fn refresh_region(&self, region: &mut MemoryRegion) {
+		// usually this code is only going to be
+		// invoked when lazy_alloc is set - and
+		// of course data is 'dirty'
+		if region.data.len() == 0 {
+			region.data = Rc::new(Vec::with_capacity(region.end - region.begin));
+			region.dirty = true;
+		}
+
+		if self.dirty_opt && !region.dirty {
+			return;
+		}
+
+		let size = region.end - region.begin;
+		let local: iovec = iovec {
+			iov_base: region.data.as_ptr() as *mut c_void,
+			iov_len: size as usize,
+		};
+		let remote: iovec = iovec {
+			iov_base: region.begin as *mut c_void,
+			iov_len: size as usize,
+		};
+		let read_size = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
+
+		if read_size < 0 {
+			region.data_sz = -1;
+			eprintln!(
+				"Region: {} Error with process_vm_readv ({})",
+				region.debug_info, read_size
+			);
+			return;
+		}
+		if size != read_size as usize {
+			region.data_sz = read_size;
+		}
+
+		region.dirty = false;
 	}
 
-	fn find_first(&self, pattern: &Pattern, debug_all: bool, start_addr: usize) -> isize {
+	fn find_first(&self, pattern: &MemoryPattern, debug_all: bool, start_addr: usize) -> isize {
 		todo!("find_once");
 	}
 
-	fn direct_mem_read(&self) -> bool {
-		todo!("direct_mem_read");
+	fn direct_mem_read(
+		&self,
+		addr: usize,
+		size: usize,
+	) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+		let buf: Vec<u8> = Vec::with_capacity(size);
+
+		let local: iovec = iovec {
+			iov_base: buf.as_ptr() as *mut c_void,
+			iov_len: size as usize,
+		};
+		let remote: iovec = iovec {
+			iov_base: addr as *mut c_void,
+			iov_len: size as usize,
+		};
+
+		let read_size = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
+
+		if read_size < 0 {
+			return Err(Error::new("Error reading MH:W memory").into());
+		}
+		if size != read_size as usize {
+			return Err(Error::new("partial memory read").into());
+		}
+
+		Ok(buf)
 	}
 
 	// Public functions
 	pub fn new(pid: Pid, dirty_opt: bool, lazy_alloc: bool, direct_mem: bool) -> Self {
-		todo!("new");
+		Self {
+			pid,
+			dirty_opt,
+			lazy_alloc,
+			direct_mem,
+			all_regions: Vec::new(),
+			pbyte: 0,
+		}
 	}
 
-	pub fn snap(&self) {
-		todo!("snap");
+	pub fn snap(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+		self.snap_pid()?;
+		self.verify_regions()
 	}
 
-	pub fn update(&self) {
-		todo!("update");
+	pub fn update(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+		// if we're in direct memory mode
+		// do not update
+		if self.direct_mem {
+			return Ok(());
+		}
+
+		// need to check memory layout
+		// usually shouldn't change much
+		// but it _does_ sometime
+		self.update_regions()?;
+
+		// don't execute the code
+		// in case we haven't enabled
+		// dirty_opt_
+		if !self.dirty_opt {
+			return Ok(());
+		}
+
+		for region in &mut self.all_regions {
+			region.dirty = true;
+		}
+
+		Ok(())
 	}
 
-	pub fn clear(&self) {
-		todo!("clear");
+	pub fn clear(&mut self) {
+		self.all_regions.clear();
 	}
 
 	pub fn store(&self, dir_name: &str) {
@@ -177,8 +293,10 @@ impl Browser {
 		todo!("load");
 	}
 
-	pub fn find_patterns(&self, begin: &[Pattern], end: &[Pattern], debug_all: bool) {
-		todo!("find_patterns");
+	pub fn find_patterns(&self, patterns: &mut [MemoryPattern], debug_all: bool) {
+		for pattern in patterns {
+			pattern.mem_location = self.find_first(pattern, debug_all, 0);
+		}
 	}
 
 	// Templates?
