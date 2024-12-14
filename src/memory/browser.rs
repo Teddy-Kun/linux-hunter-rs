@@ -1,7 +1,3 @@
-// Temporarily allow dead code so I keep my sanity
-#![allow(dead_code, unused_variables)]
-
-use super::pattern::MemoryPattern;
 use crate::err::Error;
 use crate::memory::region::MemoryRegion;
 
@@ -9,14 +5,13 @@ use nix::{
 	libc::{iovec, process_vm_readv},
 	unistd::Pid,
 };
-use nom::{bytes::complete::tag, IResult};
 use sscanf::scanf;
 use std::rc::Rc;
 use std::{ffi::c_void, fs};
 
 #[derive(Debug)]
 pub struct Browser {
-	pbyte: u8,
+	// pbyte: u8,
 	pid: Pid,
 
 	dirty_opt: bool,
@@ -39,10 +34,13 @@ impl Browser {
 		let maps = fs::read_to_string(&maps_path)?;
 
 		for line in maps.lines() {
-			match scanf!(line, "{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}") {
+			match scanf!(
+				line,
+				"{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}                            {&str}"
+			) {
 				Err(_) => continue,
-				Ok((begin, end, permissions, _offset, _device, inode)) => {
-					if inode != 0 || !permissions.starts_with("r") {
+				Ok((begin, end, permissions, _offset, _device, inode, _path)) => {
+					if inode == 0 || !permissions.starts_with("r") {
 						continue;
 					}
 
@@ -119,12 +117,6 @@ impl Browser {
 		Ok(())
 	}
 
-	// TODO: potentially increase speed
-	fn find_once<'a>(&self, pattern: &'a [u8], to_search: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
-		// let pat = &pattern.bytes;
-		tag(b"hello")(to_search)
-	}
-
 	fn verify_regions(&self) -> Result<(), Box<dyn std::error::Error>> {
 		let mut prev_beg: usize = 0;
 		let mut prev_end: usize = 0;
@@ -192,25 +184,6 @@ impl Browser {
 		region.dirty = false;
 	}
 
-	fn find_first(
-		&self,
-		pattern: &MemoryPattern,
-		debug_all: bool,
-		start_addr: usize,
-	) -> Result<usize, Box<dyn std::error::Error>> {
-		for region in &self.all_regions {
-			if region.end < start_addr {
-				continue;
-			}
-
-			if let Ok((remaining, matched)) = self.find_once(&pattern.bytes, &region.data) {
-				return Ok(remaining.len());
-			}
-		}
-
-		Err(Error::new("Pattern not found").into())
-	}
-
 	fn direct_mem_read(
 		&self,
 		addr: usize,
@@ -247,7 +220,7 @@ impl Browser {
 			lazy_alloc,
 			direct_mem,
 			all_regions: Vec::new(),
-			pbyte: 0,
+			// pbyte: 0,
 		}
 	}
 
@@ -294,17 +267,33 @@ impl Browser {
 		todo!("load");
 	}
 
-	pub fn find_patterns(&self, patterns: &mut [MemoryPattern], debug_all: bool) {
+	pub fn find_patterns(
+		&self,
+		patterns: &[fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>],
+		debug_all: bool,
+	) -> Vec<Box<Vec<u8>>> {
+		let mut result = Vec::new();
+
+		println!("all_regions len: {}", self.all_regions.len());
+
 		for pattern in patterns {
-			match self.find_first(pattern, debug_all, 0) {
-				Ok(size) => {
-					pattern.mem_location = size as isize;
+			for region in &self.all_regions {
+				if debug_all {
+					println!("Region: {}\n{:?}\n\n", region.debug_info, region.data.len());
 				}
-				Err(_) => {
-					pattern.mem_location = -1;
+
+				let res = pattern(&region.data);
+				println!("res {:?}", res);
+
+				if let Ok(res) = res {
+					result.push(Box::new(res));
+				} else {
+					println!("No match");
 				}
 			}
 		}
+
+		result
 	}
 
 	// Templates?
