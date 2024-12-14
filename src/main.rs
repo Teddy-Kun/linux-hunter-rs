@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod conf;
 mod ui;
 
@@ -9,7 +7,7 @@ use linux_hunter_lib::{
 	memory::{
 		pattern::{
 			find_current_player_name, find_emetta, find_lobby_status, find_monster,
-			find_player_buff, find_player_name, find_player_name_linux,
+			find_player_buff, find_player_name, find_player_name_linux, PatternGetter,
 		},
 		scraper::get_memory_regions,
 	},
@@ -24,13 +22,13 @@ use std::{
 };
 use ui::draw;
 
-const PLAYER_NAME_INDEX: usize = 0;
-const CURRENT_PLAYER_NAME_INDEX: usize = 1;
-const MONSTER_INDEX: usize = 2;
-const PLAYER_BUFF_INDEX: usize = 3;
-const EMETTA_INDEX: usize = 4;
-const PLAYER_NAME_LINUX_INDEX: usize = 5;
-const LOBBY_STATUS_INDEX: usize = 6;
+pub const PLAYER_NAME: usize = 0;
+pub const CURRENT_PLAYER: usize = 1;
+pub const MONSTER: usize = 2;
+pub const PLAYER_BUFF: usize = 3;
+pub const EMETTA: usize = 4;
+pub const PLAYER_NAME_LINUX: usize = 5;
+pub const LOBBY_WSTATUS: usize = 6;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -83,36 +81,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	let pattern_getters: Vec<fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>> = vec![
-		find_player_name,
-		find_current_player_name,
-		find_monster,
-		find_player_buff,
-		find_emetta,
-		find_player_name_linux,
-		find_lobby_status,
+	let mut pattern_getters: Vec<PatternGetter> = vec![
+		PatternGetter::new("PlayerName", find_player_name),
+		PatternGetter::new("CurrentPlayerName", find_current_player_name),
+		PatternGetter::new("Monster", find_monster),
+		PatternGetter::new("PlayerBuff", find_player_buff),
+		PatternGetter::new("Emetta", find_emetta),
+		PatternGetter::new("PlayerNameLinux", find_player_name_linux),
+		PatternGetter::new("LobbyStatus", find_lobby_status),
 	];
 
 	if conf.debug_ptrs {
 		todo!("debug_ptrs");
 	}
 
-	let mut findings: Vec<Vec<u8>> = Vec::with_capacity(pattern_getters.len());
-
-	for get_pattern in &pattern_getters {
-		let mut res = Vec::new();
-
+	for get_pattern in &mut pattern_getters {
 		for region in &regions {
-			if let Ok(r) = get_pattern(&region.data) {
-				res = r;
+			if let Ok(_) = get_pattern.search(&region.data) {
 				break;
 			}
 		}
-
-		findings.push(res);
 	}
 
-	println!("findings {:#?}", findings);
+	// TODO: remove
+	println!("Patterns {:#?}", pattern_getters);
 
 	println!("Done");
 
@@ -120,13 +112,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		return Ok(());
 	}
 
-	if findings[PLAYER_NAME_LINUX_INDEX].len() == 0
-		|| findings[CURRENT_PLAYER_NAME_INDEX].len() == 0
+	if pattern_getters[PLAYER_NAME_LINUX].result.is_none()
+		|| pattern_getters[CURRENT_PLAYER].result.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
 	}
 
-	if conf.show_monsters && findings[MONSTER_INDEX].len() == 0 {
+	if conf.show_monsters && pattern_getters[MONSTER].result.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 

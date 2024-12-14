@@ -5,6 +5,37 @@ use nom::{
 
 use crate::err::Error;
 
+#[derive(Debug)]
+pub struct PatternGetter {
+	pub result: Option<Vec<u8>>,
+	pub debug_name: String,
+	find_func: fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>,
+}
+
+impl PatternGetter {
+	pub fn new(
+		debug_name: &str,
+		find_func: fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>,
+	) -> Self {
+		PatternGetter {
+			result: None,
+			debug_name: debug_name.to_string(),
+			find_func,
+		}
+	}
+
+	pub fn search(&mut self, input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+		match (self.find_func)(input) {
+			Ok(res) => self.result = Some(res),
+			Err(e) => {
+				self.result = None;
+				return Err(e);
+			}
+		};
+		Ok(())
+	}
+}
+
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
 pub fn find_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
