@@ -51,12 +51,14 @@ impl MemoryRegion {
 			contents.truncate(contents.len() - 3);
 		}
 
-		contents.truncate(contents.len() - 1);
+		if contents.len() > 0 {
+			contents.truncate(contents.len() - 1);
 
-		let mut file = File::create(path)?;
+			let mut file = File::create(path)?;
 
-		file.write_all(contents.as_bytes())?;
-		file.flush()?;
+			file.write_all(contents.as_bytes())?;
+			file.flush()?;
+		}
 
 		Ok(())
 	}
