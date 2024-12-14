@@ -7,7 +7,8 @@ use linux_hunter_lib::{
 	memory::{
 		pattern::{
 			find_current_player_name, find_emetta, find_lobby_status, find_monster,
-			find_player_buff, find_player_name, find_player_name_linux, PatternGetter,
+			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
+			PatternGetter,
 		},
 		scraper::get_memory_regions,
 	},
@@ -24,11 +25,12 @@ use ui::draw;
 
 pub const PLAYER_NAME: usize = 0;
 pub const CURRENT_PLAYER: usize = 1;
-pub const MONSTER: usize = 2;
-pub const PLAYER_BUFF: usize = 3;
-pub const EMETTA: usize = 4;
-pub const PLAYER_NAME_LINUX: usize = 5;
-pub const LOBBY_WSTATUS: usize = 6;
+pub const PLAYER_DAMAGE: usize = 2;
+pub const MONSTER: usize = 3;
+pub const PLAYER_BUFF: usize = 4;
+pub const EMETTA: usize = 5;
+pub const PLAYER_NAME_LINUX: usize = 6;
+pub const LOBBY_WSTATUS: usize = 7;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -75,6 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut pattern_getters: Vec<PatternGetter> = vec![
 		PatternGetter::new("PlayerName", find_player_name),
 		PatternGetter::new("CurrentPlayerName", find_current_player_name),
+		PatternGetter::new("PlayerDamage", find_player_damage),
 		PatternGetter::new("Monster", find_monster),
 		PatternGetter::new("PlayerBuff", find_player_buff),
 		PatternGetter::new("Emetta", find_emetta),
@@ -96,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Done");
 
 	if pattern_getters[PLAYER_NAME_LINUX].result.is_none()
-		|| pattern_getters[CURRENT_PLAYER].result.is_none()
+		|| pattern_getters[PLAYER_DAMAGE].result.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
 	}
