@@ -240,9 +240,8 @@ mod tests {
 			0x48, 0x8B, 0x7C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x68, 0xC3, 0x00,
 		];
 
-		match find_player_name(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_player_name(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -253,9 +252,8 @@ mod tests {
 			0xC9, 0x41, 0x89, 0xC0, 0xE8, 0x00,
 		];
 
-		match find_current_player_name(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_current_player_name(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -266,9 +264,8 @@ mod tests {
 			0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9, 0x00,
 		];
 
-		match find_player_damage(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_player_damage(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -279,9 +276,8 @@ mod tests {
 			0x00, 0xC6, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x0D, 0x00,
 		];
 
-		match find_monster(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_monster(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -292,9 +288,8 @@ mod tests {
 			0x00, 0x00, 0x89, 0x57, 0x00,
 		];
 
-		match find_player_buff(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_player_buff(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -307,9 +302,8 @@ mod tests {
 			0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x4E, 0x00,
 		];
 
-		match find_lobby_status(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_lobby_status(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -317,9 +311,8 @@ mod tests {
 	fn test_find_emetta() {
 		let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
 
-		match find_emetta(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_emetta(&data) {
+			panic!("error: {}", e);
 		}
 	}
 
@@ -331,9 +324,8 @@ mod tests {
 			0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3, 0x00,
 		];
 
-		match find_player_name_linux(&data) {
-			Ok(name) => println!("name: {:#?}", name),
-			Err(e) => panic!("error: {:#?}", e),
+		if let Err(e) = find_player_name_linux(&data) {
+			panic!("error: {}", e);
 		}
 	}
 }
