@@ -14,7 +14,7 @@ pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::er
 	for line in maps.lines() {
 		match scanf!(
 			line,
-			"{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}                            {&str}"
+			"{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}{&str}"
 		) {
 			Err(_) => continue,
 			Ok((begin, end, permissions, _offset, _device, inode, _path)) => {
