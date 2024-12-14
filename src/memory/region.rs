@@ -34,6 +34,12 @@ impl MemoryRegion {
 		}
 	}
 
+	pub fn clear(&mut self) {
+		self.data_sz = 0;
+		self.dirty = true;
+		self.data.clear();
+	}
+
 	pub fn fill_data(&mut self, pid: Pid) -> Result<(), Box<dyn std::error::Error>> {
 		let local = IoSliceMut::new(&mut self.data);
 		let remote = RemoteIoVec {

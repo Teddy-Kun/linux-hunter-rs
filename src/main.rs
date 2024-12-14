@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+
 mod conf;
 mod ui;
 
 use conf::get_config;
 use linux_hunter_lib::{
+	err::Error,
 	memory::{
 		pattern::{
 			find_current_player_name, find_emetta, find_lobby_status, find_monster,
@@ -20,6 +23,14 @@ use std::{
 	time::Duration,
 };
 use ui::draw;
+
+const PLAYER_NAME_INDEX: usize = 0;
+const CURRENT_PLAYER_NAME_INDEX: usize = 1;
+const MONSTER_INDEX: usize = 2;
+const PLAYER_BUFF_INDEX: usize = 3;
+const EMETTA_INDEX: usize = 4;
+const PLAYER_NAME_LINUX_INDEX: usize = 5;
+const LOBBY_STATUS_INDEX: usize = 6;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -72,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	let all_patterns: Vec<fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>> = vec![
+	let pattern_getters: Vec<fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>> = vec![
 		find_player_name,
 		find_current_player_name,
 		find_monster,
@@ -86,27 +97,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		todo!("debug_ptrs");
 	}
 
-	for pattern in &all_patterns {
+	let mut findings: Vec<Vec<u8>> = Vec::with_capacity(pattern_getters.len());
+
+	for get_pattern in &pattern_getters {
+		let mut res = Vec::new();
+
 		for region in &regions {
-			if let Ok(res) = pattern(&region.data) {
-				println!("Found pattern: {}\n{:?}", region.debug_info, res);
+			if let Ok(r) = get_pattern(&region.data) {
+				res = r;
+				break;
 			}
 		}
+
+		findings.push(res);
 	}
+
+	println!("findings {:#?}", findings);
 
 	println!("Done");
 
-	// if conf.debug_all {
-	// 	return Ok(());
-	// }
+	if conf.debug_all {
+		return Ok(());
+	}
 
-	// if all_patterns[5].mem_location < 0 || all_patterns[1].mem_location < 0 {
-	// 	return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
-	// }
+	if findings[PLAYER_NAME_LINUX_INDEX].len() == 0
+		|| findings[CURRENT_PLAYER_NAME_INDEX].len() == 0
+	{
+		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
+	}
 
-	// if conf.show_monsters && all_patterns[2].mem_location < 0 {
-	// 	return Err(Error::new("Can't find AoB for patterns::Monster").into());
-	// }
+	if conf.show_monsters && findings[MONSTER_INDEX].len() == 0 {
+		return Err(Error::new("Can't find AoB for patterns::Monster").into());
+	}
 
 	let run = Arc::new(AtomicBool::new(true));
 	let run_clone = Arc::clone(&run);
@@ -115,10 +137,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		run_clone.store(false, std::sync::atomic::Ordering::Relaxed);
 	})?;
 
-	// let mut terminal = ratatui::init();
+	let mut terminal = ratatui::init();
 	// main loop
 	while run.load(std::sync::atomic::Ordering::Relaxed) {
-		// terminal.draw(draw)?;
+		terminal.draw(draw)?;
 
 		sleep(Duration::from_millis(1000));
 	}
