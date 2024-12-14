@@ -40,12 +40,18 @@ impl MemoryRegion {
 
 	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
 		let path = path.to_string() + "/" + self.debug_name.as_str() + ".txt";
-		let contents = self
+		let mut contents = self
 			.data
 			.iter()
 			.map(|byte| format!("{:02x} ", byte))
 			.collect::<Vec<String>>()
-			.join(" ");
+			.join("");
+
+		while contents.ends_with("00 ") {
+			contents.truncate(contents.len() - 3);
+		}
+
+		contents.truncate(contents.len() - 1);
 
 		let mut file = File::create(path)?;
 
