@@ -10,6 +10,7 @@ use linux_hunter_lib::{
 			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
 			PatternGetter,
 		},
+		region::verify_regions,
 		scraper::get_memory_regions,
 	},
 	mhw::find_mhw_pid,
@@ -31,7 +32,7 @@ pub const MONSTER: usize = 3;
 pub const PLAYER_BUFF: usize = 4;
 pub const EMETTA: usize = 5;
 pub const PLAYER_NAME_LINUX: usize = 6;
-pub const LOBBY_WSTATUS: usize = 7;
+pub const LOBBY_STATUS: usize = 7;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
@@ -44,6 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			match find_mhw_pid() {
 				Ok(pid) => {
 					mhw_pid = pid;
+					println!("Found pid: {}", mhw_pid);
 					break;
 				}
 
@@ -64,11 +66,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	println!("Found pid: {}", mhw_pid);
-
 	println!("finding main AoB entry points...");
 
 	let mut regions = get_memory_regions(mhw_pid)?;
+	verify_regions(&regions)?;
+
 	for region in &mut regions {
 		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
 			eprintln!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
@@ -92,6 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		for (i, region) in regions.iter().enumerate() {
 			if let Ok(_) = get_pattern.search(&region.data) {
 				get_pattern.index = i;
+				println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
 				break;
 			}
 		}

@@ -39,6 +39,10 @@ impl MemoryRegion {
 	}
 
 	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+		if self.debug_name == "5375146663" {
+			println!("5375146663")
+		}
+
 		let path = path.to_string() + "/" + self.debug_name.as_str() + ".txt";
 		let mut contents = self
 			.data
@@ -96,4 +100,17 @@ impl MemoryRegion {
 
 		Ok(())
 	}
+}
+
+pub fn verify_regions(regions: &Vec<MemoryRegion>) -> Result<(), Box<dyn std::error::Error>> {
+	let mut prev_beg = regions[0].begin;
+	for region in regions.iter().skip(1) {
+		if region.begin < prev_beg {
+			return Err(Error::new("Invalid region sequence - order").into());
+		}
+
+		prev_beg = region.begin;
+	}
+
+	Ok(())
 }
