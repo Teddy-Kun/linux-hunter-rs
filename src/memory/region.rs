@@ -18,17 +18,12 @@ pub struct MemoryRegion {
 }
 
 impl MemoryRegion {
-	pub fn new(begin: usize, end: usize, debug_info: &str, alloc: bool) -> Self {
-		let vec = match alloc {
-			true => vec![0u8; end - begin],
-			false => Vec::new(),
-		};
-
+	pub fn new(begin: usize, end: usize, debug_info: &str) -> Self {
 		MemoryRegion {
 			begin,
 			end,
 			debug_info: debug_info.to_string(),
-			data: vec,
+			data: vec![0u8; end - begin],
 			data_sz: (end - begin),
 			dirty: true,
 		}

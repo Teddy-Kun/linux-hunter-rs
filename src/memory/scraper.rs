@@ -5,10 +5,7 @@ use sscanf::scanf;
 
 use super::region::MemoryRegion;
 
-pub fn get_memory_regions(
-	pid: Pid,
-	alloc_mem: bool,
-) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
+pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
 	let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";
 	let maps = fs::read_to_string(&maps_path)?;
 
@@ -25,7 +22,7 @@ pub fn get_memory_regions(
 					continue;
 				}
 
-				let reg = MemoryRegion::new(begin, end, line, alloc_mem);
+				let reg = MemoryRegion::new(begin, end, line);
 				regions.push(reg);
 			}
 		};
