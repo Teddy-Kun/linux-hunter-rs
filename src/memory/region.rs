@@ -9,8 +9,7 @@ use crate::err::Error;
 
 #[derive(Debug)]
 pub struct MemoryRegion {
-	pub begin: usize,
-	pub end: usize,
+	begin: usize,
 	pub debug_info: String,
 	pub data: Vec<u8>,
 	pub data_sz: usize,
@@ -21,7 +20,6 @@ impl MemoryRegion {
 	pub fn new(begin: usize, end: usize, debug_info: &str) -> Self {
 		MemoryRegion {
 			begin,
-			end,
 			debug_info: debug_info.to_string(),
 			data: vec![0u8; end - begin],
 			data_sz: (end - begin),
