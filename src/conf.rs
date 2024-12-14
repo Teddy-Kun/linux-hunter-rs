@@ -44,6 +44,12 @@ pub struct Config {
 
 	#[arg(long, help = "Prints memory usage for debugging purposes")]
 	pub print_mem_usage: bool,
+
+	#[arg(
+		long,
+		help = "For optimization reasons, some memory regions are assumed to be unreadable. If this flag is set, all memory regions are scanned"
+	)]
+	pub scan_all: bool,
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {

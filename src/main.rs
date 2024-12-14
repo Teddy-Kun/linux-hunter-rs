@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid)?;
+	let mut regions = get_memory_regions(mhw_pid, conf.scan_all)?;
 	for region in &mut regions {
 		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
 			eprintln!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
