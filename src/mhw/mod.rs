@@ -6,7 +6,7 @@ use std::{
 	io::Read,
 };
 
-const MHW_EXE: &'static str = "\\MonsterHunterWorld.exe";
+const MHW_EXE: &str = "\\MonsterHunterWorld.exe";
 
 pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 	// read "/proc"

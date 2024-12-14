@@ -13,7 +13,7 @@ backtrace = { version = "0.3.74", features = ["serde"], optional = true }
 clap = { version = "4.5.23", features = ["derive", "string"] }
 crossterm = "0.28.1"
 ctrlc = "3.4.5"
-nix = { version = "0.29.0", features = ["process", "fs"] }
+nix = { version = "0.29.0", features = ["process", "fs", "uio"] }
 nom = "7.1.3"
 ratatui = "0.29.0"
 serde = { version = "1.0.216", features = ["derive"] }

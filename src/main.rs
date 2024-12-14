@@ -3,13 +3,12 @@ mod ui;
 
 use conf::get_config;
 use linux_hunter_lib::{
-	err::Error,
 	memory::{
-		browser::Browser,
 		pattern::{
-			find_player_name, MemoryPattern, CURRENT_PLAYER_NAME, EMETTA, LOBBY_STATUS, MONSTER,
-			PLAYER_BUFF, PLAYER_NAME, PLAYER_NAME_LINUX,
+			find_current_player_name, find_emetta, find_lobby_status, find_monster,
+			find_player_buff, find_player_name, find_player_name_linux,
 		},
+		scraper::get_memory_regions,
 	},
 	mhw::find_mhw_pid,
 };
@@ -48,27 +47,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	} else {
 		match conf.mhw_pid {
-			Some(pid) => mhw_pid = Pid::from_raw(pid as i32),
+			Some(pid) => mhw_pid = Pid::from_raw(pid),
 			None => todo!("conf load"),
 		}
 	}
 
 	println!("Found pid: {}", mhw_pid);
 
-	let mut browser = Browser::new(
-		mhw_pid,
-		conf.mem_dirty_opt,
-		!conf.no_lazy_alloc,
-		!conf.no_direct_mem,
-	);
-
-	println!("Browser: {:#?}", browser);
-
 	match conf.load {
 		Some(_l) => todo!("load"),
 		None => {
-			browser.snap()?;
-
 			if let Some(_s) = conf.save {
 				todo!("save")
 			}
@@ -77,37 +65,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("finding main AoB entry points...");
 
-	let mut all_patterns: Vec<MemoryPattern> = vec![
-		MemoryPattern::new("PlayerName", find_player_name)?,
-		// MemoryPattern::new(&CURRENT_PLAYER_NAME)?,
-		// MemoryPattern::new(&MONSTER)?,
-		// MemoryPattern::new(&PLAYER_BUFF)?,
-		// MemoryPattern::new(&EMETTA)?,
-		// MemoryPattern::new(&PLAYER_NAME_LINUX)?,
-		// MemoryPattern::new(&LOBBY_STATUS)?,
+	let mut regions = get_memory_regions(mhw_pid, true)?;
+	for region in &mut regions {
+		if let Err(e) = region.fill_data(mhw_pid) {
+			eprintln!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
+		}
+	}
+
+	let all_patterns: Vec<fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>> = vec![
+		find_player_name,
+		find_current_player_name,
+		find_monster,
+		find_player_buff,
+		find_emetta,
+		find_player_name_linux,
+		find_lobby_status,
 	];
-	browser.find_patterns(&mut all_patterns, conf.debug_all);
 
 	if conf.debug_ptrs {
-		for p in &all_patterns {
-			if p.mem_location > 0 {}
-		}
-
 		todo!("debug_ptrs");
 	}
+
+	for pattern in &all_patterns {
+		for region in &regions {
+			if let Ok(res) = pattern(&region.data) {
+				println!("Found pattern: {}\n{:?}", region.debug_info, res);
+			}
+		}
+	}
+
 	println!("Done");
 
-	if conf.debug_all {
-		return Ok(());
-	}
+	// if conf.debug_all {
+	// 	return Ok(());
+	// }
 
-	if all_patterns[5].mem_location < 0 || all_patterns[1].mem_location < 0 {
-		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
-	}
+	// if all_patterns[5].mem_location < 0 || all_patterns[1].mem_location < 0 {
+	// 	return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
+	// }
 
-	if conf.show_monsters && all_patterns[2].mem_location < 0 {
-		return Err(Error::new("Can't find AoB for patterns::Monster").into());
-	}
+	// if conf.show_monsters && all_patterns[2].mem_location < 0 {
+	// 	return Err(Error::new("Can't find AoB for patterns::Monster").into());
+	// }
 
 	let run = Arc::new(AtomicBool::new(true));
 	let run_clone = Arc::clone(&run);
@@ -116,10 +115,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		run_clone.store(false, std::sync::atomic::Ordering::Relaxed);
 	})?;
 
-	let mut terminal = ratatui::init();
+	// let mut terminal = ratatui::init();
 	// main loop
 	while run.load(std::sync::atomic::Ordering::Relaxed) {
-		terminal.draw(draw)?;
+		// terminal.draw(draw)?;
+
+		sleep(Duration::from_millis(1000));
 	}
 
 	Ok(())

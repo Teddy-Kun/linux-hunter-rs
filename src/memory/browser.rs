@@ -2,12 +2,12 @@ use crate::err::Error;
 use crate::memory::region::MemoryRegion;
 
 use nix::{
-	libc::{iovec, process_vm_readv},
+	sys::uio::{self, RemoteIoVec},
 	unistd::Pid,
 };
 use sscanf::scanf;
-use std::rc::Rc;
-use std::{ffi::c_void, fs};
+use std::fs;
+use std::{io::IoSliceMut, rc::Rc};
 
 #[derive(Debug)]
 pub struct Browser {
@@ -59,25 +59,18 @@ impl Browser {
 		for region in &mut self.all_regions {
 			let size = region.end - region.begin;
 
-			let local: iovec = iovec {
-				iov_base: region.data.as_ptr() as *mut c_void,
-				iov_len: size as usize,
-			};
-			let remote: iovec = iovec {
-				iov_base: region.begin as *mut c_void,
-				iov_len: size as usize,
+			let data = Rc::get_mut(&mut region.data);
+			let local = IoSliceMut::new(data.unwrap());
+			let remote = RemoteIoVec {
+				base: region.begin,
+				len: size as usize,
 			};
 
-			let read_size =
-				unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
-			if read_size < 0 {
-				eprintln!(
-					"Region: {} Error with process_vm_readv ({})",
-					region.debug_info, read_size
-				);
-			}
+			let read_size = uio::process_vm_readv(self.pid, &mut [local], &[remote])?;
 
-			if read_size as usize != size {
+			println!("DATA LEN: {}", region.data.len());
+
+			if read_size != size {
 				eprintln!(
 					"Region: {} Read {} bytes instead of {}",
 					region.debug_info, read_size, size
@@ -145,7 +138,7 @@ impl Browser {
 		Ok(())
 	}
 
-	fn refresh_region(&self, region: &mut MemoryRegion) {
+	fn refresh_region(&self, region: &mut MemoryRegion) -> Result<(), Box<dyn std::error::Error>> {
 		// usually this code is only going to be
 		// invoked when lazy_alloc is set - and
 		// of course data is 'dirty'
@@ -155,33 +148,27 @@ impl Browser {
 		}
 
 		if self.dirty_opt && !region.dirty {
-			return;
+			return Ok(());
 		}
 
 		let size = region.end - region.begin;
-		let local: iovec = iovec {
-			iov_base: region.data.as_ptr() as *mut c_void,
-			iov_len: size as usize,
-		};
-		let remote: iovec = iovec {
-			iov_base: region.begin as *mut c_void,
-			iov_len: size as usize,
-		};
-		let read_size = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
 
-		if read_size < 0 {
-			region.data_sz = -1;
-			eprintln!(
-				"Region: {} Error with process_vm_readv ({})",
-				region.debug_info, read_size
-			);
-			return;
-		}
+		let data = Rc::get_mut(&mut region.data);
+		let local = IoSliceMut::new(data.unwrap());
+		let remote = RemoteIoVec {
+			base: region.begin,
+			len: size as usize,
+		};
+
+		let read_size = uio::process_vm_readv(self.pid, &mut [local], &[remote])?;
+
 		if size != read_size as usize {
-			region.data_sz = read_size;
+			region.data_sz = read_size as usize;
 		}
 
 		region.dirty = false;
+
+		Ok(())
 	}
 
 	fn direct_mem_read(
@@ -189,22 +176,16 @@ impl Browser {
 		addr: usize,
 		size: usize,
 	) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-		let buf: Vec<u8> = Vec::with_capacity(size);
+		let mut buf: Vec<u8> = Vec::with_capacity(size);
 
-		let local: iovec = iovec {
-			iov_base: buf.as_ptr() as *mut c_void,
-			iov_len: size as usize,
-		};
-		let remote: iovec = iovec {
-			iov_base: addr as *mut c_void,
-			iov_len: size as usize,
+		let local = IoSliceMut::new(&mut buf);
+		let remote = RemoteIoVec {
+			base: addr,
+			len: size as usize,
 		};
 
-		let read_size = unsafe { process_vm_readv(self.pid.as_raw(), &local, 1, &remote, 1, 0) };
+		let read_size = uio::process_vm_readv(self.pid, &mut [local], &[remote])?;
 
-		if read_size < 0 {
-			return Err(Error::new("Error reading MH:W memory").into());
-		}
 		if size != read_size as usize {
 			return Err(Error::new("partial memory read").into());
 		}
@@ -260,11 +241,11 @@ impl Browser {
 	}
 
 	pub fn store(&self, dir_name: &str) {
-		todo!("store");
+		todo!("store {}", dir_name);
 	}
 
 	pub fn load(&self, dir_name: &str) {
-		todo!("load");
+		todo!("load {}", dir_name);
 	}
 
 	pub fn find_patterns(
@@ -277,20 +258,25 @@ impl Browser {
 		println!("all_regions len: {}", self.all_regions.len());
 
 		for pattern in patterns {
+			let now = std::time::Instant::now();
 			for region in &self.all_regions {
+				if region.data.len() > 0 {
+					println!("FOUND A LONG ONE")
+				}
+
 				if debug_all {
 					println!("Region: {}\n{:?}\n\n", region.debug_info, region.data.len());
 				}
 
 				let res = pattern(&region.data);
-				println!("res {:?}", res);
-
 				if let Ok(res) = res {
 					result.push(Box::new(res));
 				} else {
 					println!("No match");
 				}
 			}
+
+			println!("Took: {} ns", now.elapsed().as_nanos());
 		}
 
 		result
