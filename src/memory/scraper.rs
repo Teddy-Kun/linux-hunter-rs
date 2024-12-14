@@ -17,11 +17,11 @@ pub fn get_memory_regions(
 	for line in maps.lines() {
 		match scanf!(
 			line,
-			"{usize:x}-{usize:x} {&str} {u64:x} {&str} {i64}{&str}"
+			"{usize:x}-{usize:x} {&str} {usize:x} {&str} {isize}{&str}"
 		) {
 			Err(_) => continue,
 			Ok((begin, end, permissions, _offset, _device, inode, path)) => {
-				if inode == 0
+				if inode != 0
 					|| !permissions.starts_with("r")
 					|| (!scan_all && path.contains("/dev/dri/renderD128"))
 				{
