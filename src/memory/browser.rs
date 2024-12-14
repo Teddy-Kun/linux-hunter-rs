@@ -1,3 +1,7 @@
+// incomplete reimplementation of the memory browser of the og repo
+// tried to port it to rust, but decided to do a different architecture
+// its still here in case I need to look smth up
+
 use crate::err::Error;
 use crate::memory::region::MemoryRegion;
 
