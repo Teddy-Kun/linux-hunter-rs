@@ -22,7 +22,7 @@ pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::er
 					continue;
 				}
 
-				let reg = MemoryRegion::new(begin, end, line);
+				let reg = MemoryRegion::new(begin, end, itoa::Buffer::new().format(begin), line);
 				regions.push(reg);
 			}
 		};

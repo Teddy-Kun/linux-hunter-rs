@@ -1,66 +1,53 @@
 use clap::Parser;
-use linux_hunter_lib::err::Error;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Config {
-	#[arg(short = 'm', long)]
+	#[arg(
+		short = 'm',
+		long,
+		help = "Shows HP monsters data (requires slightly more CPU usage)"
+	)]
 	pub show_monsters: bool,
 
-	#[arg(short = 'c', long)]
+	#[arg(
+		short = 'c',
+		long,
+		help = "Shows information about crowns (Gold Small, Silver Large and Gold Large)"
+	)]
 	pub show_crowns: bool,
 
-	#[arg(short = 's', long)]
-	pub save: Option<String>,
-
-	#[arg(short = 'l', long)]
-	pub load: Option<String>,
-
-	#[arg(long)]
+	#[arg(
+		long,
+		help = "Don't access MH:W memory directly and dynamically, use a local copy via buffers - increase CPU usage (both u and s) at the advantage of potentially slightly less inconsistencies"
+	)]
 	pub no_direct_mem: bool,
 
-	#[arg(short = 'f', long)]
-	pub f_display: Option<String>,
-
-	#[arg(long)]
+	#[arg(
+		long,
+		help = "Specifies which pid to scan memory for (usually main MH:W). When not specified, linux-hunter-rs will try to find it automatically"
+	)]
 	pub mhw_pid: Option<i32>,
 
-	#[arg(long)]
-	pub debug_ptrs: bool,
-
-	#[arg(long)]
-	pub debug_all: bool,
-
-	#[arg(long)]
-	pub mem_dirty_opt: bool,
-
-	#[arg(long)]
-	pub no_lazy_alloc: bool,
-
-	#[arg(short = 'r', long)]
+	#[arg(
+		short = 'r',
+		long,
+		help = "Specifies what is the UI/stats refresh interval in ms (default 1000)"
+	)]
 	pub refresh: Option<u16>,
 
-	#[arg(long)]
-	pub no_color: bool,
-
-	#[arg(long)]
-	pub compact_display: bool,
+	#[arg(
+		long,
+		help = "Dumps memory to a file in the dir specified upon initialization"
+	)]
+	pub dump_mem: Option<String>,
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
 	let conf = Config::parse();
 
-	if conf.save.is_some() && conf.load.is_some() {
-		return Err(Error::new("Can't specify both 'load' and 'save' options").into());
-	}
-
-	if conf.load.is_some() && !conf.no_direct_mem {
-		return Err(Error::new("The option -l,--load is incompatible with direct memory, please specify also --no-direct-mem").into());
-	}
-
-	if conf.f_display.is_some() {
-		// remove this after it is implemented
-		todo!("f_display");
+	if conf.no_direct_mem {
+		todo!("no_direct_mem");
 	}
 
 	Ok(conf)

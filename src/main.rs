@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let conf = get_config()?;
 
 	let mhw_pid;
-	if conf.mhw_pid.is_none() && conf.load.is_none() {
+	if conf.mhw_pid.is_none() {
 		println!("Trying to detect MHW PID");
 		let mut attempts = 0;
 		loop {
@@ -63,20 +63,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Found pid: {}", mhw_pid);
 
-	match conf.load {
-		Some(_l) => todo!("load"),
-		None => {
-			if let Some(_s) = conf.save {
-				todo!("save")
-			}
-		}
-	}
-
 	println!("finding main AoB entry points...");
 
 	let mut regions = get_memory_regions(mhw_pid)?;
 	for region in &mut regions {
-		if let Err(e) = region.fill_data(mhw_pid) {
+		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
 			eprintln!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
 		}
 	}
@@ -91,10 +82,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		PatternGetter::new("LobbyStatus", find_lobby_status),
 	];
 
-	if conf.debug_ptrs {
-		todo!("debug_ptrs");
-	}
-
 	for get_pattern in &mut pattern_getters {
 		for region in &regions {
 			if let Ok(_) = get_pattern.search(&region.data) {
@@ -107,10 +94,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Patterns {:#?}", pattern_getters);
 
 	println!("Done");
-
-	if conf.debug_all {
-		return Ok(());
-	}
 
 	if pattern_getters[PLAYER_NAME_LINUX].result.is_none()
 		|| pattern_getters[CURRENT_PLAYER].result.is_none()

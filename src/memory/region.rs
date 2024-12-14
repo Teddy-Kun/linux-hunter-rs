@@ -1,4 +1,7 @@
-use std::io::IoSliceMut;
+use std::{
+	fs::File,
+	io::{IoSliceMut, Write},
+};
 
 use nix::{
 	sys::uio::{process_vm_readv, RemoteIoVec},
@@ -10,6 +13,7 @@ use crate::err::Error;
 #[derive(Debug)]
 pub struct MemoryRegion {
 	begin: usize,
+	pub debug_name: String,
 	pub debug_info: String,
 	pub data: Vec<u8>,
 	pub data_sz: usize,
@@ -17,9 +21,10 @@ pub struct MemoryRegion {
 }
 
 impl MemoryRegion {
-	pub fn new(begin: usize, end: usize, debug_info: &str) -> Self {
+	pub fn new(begin: usize, end: usize, debug_name: &str, debug_info: &str) -> Self {
 		MemoryRegion {
 			begin,
+			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
 			data: vec![0u8; end - begin],
 			data_sz: (end - begin),
@@ -33,7 +38,28 @@ impl MemoryRegion {
 		self.data.clear();
 	}
 
-	pub fn fill_data(&mut self, pid: Pid) -> Result<(), Box<dyn std::error::Error>> {
+	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+		let path = path.to_string() + "/" + self.debug_name.as_str() + ".txt";
+		let contents = self
+			.data
+			.iter()
+			.map(|byte| format!("{:02x} ", byte))
+			.collect::<Vec<String>>()
+			.join(" ");
+
+		let mut file = File::create(path)?;
+
+		file.write_all(contents.as_bytes())?;
+		file.flush()?;
+
+		Ok(())
+	}
+
+	pub fn fill_data(
+		&mut self,
+		pid: Pid,
+		dump_mem: Option<String>,
+	) -> Result<(), Box<dyn std::error::Error>> {
 		let local = IoSliceMut::new(&mut self.data);
 		let remote = RemoteIoVec {
 			base: self.begin,
@@ -53,6 +79,12 @@ impl MemoryRegion {
 		}
 
 		self.dirty = false;
+
+		if let Some(path) = dump_mem {
+			if let Err(e) = self.dump_mem(&path) {
+				eprintln!("Failed to dump memory: {}", e);
+			}
+		}
 
 		Ok(())
 	}
