@@ -68,12 +68,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid, conf.scan_all)?;
+	let mut regions = get_memory_regions(mhw_pid)?;
 	for region in &mut regions {
 		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
 			eprintln!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
 		}
 	}
+
+	println!("found {} regions", regions.len());
 
 	let mut pattern_getters: Vec<PatternGetter> = vec![
 		PatternGetter::new("PlayerName", find_player_name),

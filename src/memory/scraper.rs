@@ -5,10 +5,7 @@ use sscanf::scanf;
 
 use super::region::MemoryRegion;
 
-pub fn get_memory_regions(
-	pid: Pid,
-	scan_all: bool,
-) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
+pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
 	let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";
 	let maps = fs::read_to_string(&maps_path)?;
 
@@ -20,11 +17,8 @@ pub fn get_memory_regions(
 			"{usize:x}-{usize:x} {&str} {usize:x} {&str} {isize}{&str}"
 		) {
 			Err(_) => continue,
-			Ok((begin, end, permissions, _offset, _device, inode, path)) => {
-				if inode != 0
-					|| !permissions.starts_with("r")
-					|| (!scan_all && path.contains("/dev/dri/renderD128"))
-				{
+			Ok((begin, end, permissions, _offset, _device, inode, _path)) => {
+				if inode != 0 || !permissions.starts_with("r") {
 					continue;
 				}
 
