@@ -38,7 +38,7 @@ pub struct Config {
 
 	#[arg(
 		long,
-		help = "Dumps memory to a file in the dir specified upon initialization"
+		help = "Dumps memory to a file in the dir specified upon initialization. WARNING: very slow and memory hungry, but useful for debugging"
 	)]
 	pub dump_mem: Option<String>,
 
