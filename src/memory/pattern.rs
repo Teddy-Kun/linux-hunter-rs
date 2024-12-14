@@ -10,6 +10,7 @@ pub struct PatternGetter {
 	pub result: Option<Vec<u8>>,
 	pub debug_name: String,
 	find_func: fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>,
+	pub index: usize, // for saving the index of the region of the found pattern
 }
 
 impl PatternGetter {
@@ -21,6 +22,7 @@ impl PatternGetter {
 			result: None,
 			debug_name: debug_name.to_string(),
 			find_func,
+			index: 0,
 		}
 	}
 

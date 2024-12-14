@@ -89,8 +89,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for get_pattern in &mut pattern_getters {
-		for region in &regions {
+		for (i, region) in regions.iter().enumerate() {
 			if let Ok(_) = get_pattern.search(&region.data) {
+				get_pattern.index = i;
 				break;
 			}
 		}
