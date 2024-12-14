@@ -21,6 +21,7 @@ use std::{
 	thread::sleep,
 	time::Duration,
 };
+use sysinfo::System;
 use ui::draw;
 
 pub const PLAYER_NAME: usize = 0;
@@ -96,12 +97,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// TODO: remove
 	println!("Patterns {:#?}", pattern_getters);
 
+	let sys = System::new_all();
+
+	let pid = sysinfo::get_current_pid().unwrap();
+	if let Some(process) = sys.processes().get(&pid) {
+		println!("Memory usage: {}kb", process.memory() / 1024);
+	}
+
 	println!("Done");
 
 	if pattern_getters[PLAYER_NAME_LINUX].result.is_none()
 		|| pattern_getters[PLAYER_DAMAGE].result.is_none()
 	{
-		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux and/or patterns::PlayerDamage - Try to run with 'sudo' and/or specify a pid").into());
+		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
+	}
+
+	if pattern_getters[PLAYER_DAMAGE].result.is_none() {
+		return Err(Error::new("Can't find AoB for patterns::PlayerDamage").into());
 	}
 
 	if conf.show_monsters && pattern_getters[MONSTER].result.is_none() {

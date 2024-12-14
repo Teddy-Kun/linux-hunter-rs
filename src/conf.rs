@@ -41,6 +41,9 @@ pub struct Config {
 		help = "Dumps memory to a file in the dir specified upon initialization"
 	)]
 	pub dump_mem: Option<String>,
+
+	#[arg(long, help = "Prints memory usage for debugging purposes")]
+	pub print_mem_usage: bool,
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
