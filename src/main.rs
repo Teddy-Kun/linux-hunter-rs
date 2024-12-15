@@ -18,6 +18,7 @@ use linux_hunter_lib::{
 
 use nix::unistd::Pid;
 use std::{
+	fs::{create_dir, remove_dir_all},
 	sync::{atomic::AtomicBool, Arc, Mutex},
 	thread::{self, sleep},
 	time::Duration,
@@ -68,8 +69,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid)?;
+	let mut regions = get_memory_regions(mhw_pid, conf.debug)?;
 	verify_regions(&regions)?;
+
+	if conf.dump_mem.is_some() {
+		let path = conf.dump_mem.clone().unwrap();
+
+		remove_dir_all(&path)?;
+		create_dir(path)?;
+	}
 
 	for region in &mut regions {
 		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
@@ -110,9 +118,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let regions_arc = Arc::new(regions);
 	let mut threads = Vec::new();
+
 	for get_pattern in &mut pattern_getters {
+		// clone the stuff so we can do things in parallel
 		let regions_clone = Arc::clone(&regions_arc);
 		let get_pattern = Arc::clone(&get_pattern);
+
 		let handle = thread::spawn(move || {
 			for (i, region) in regions_clone.iter().enumerate() {
 				let mut get_pattern = get_pattern.lock().unwrap();
@@ -133,11 +144,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// TODO: remove
 	println!("Patterns {:#?}", pattern_getters);
 
-	let sys = System::new_all();
-
-	let pid = sysinfo::get_current_pid().unwrap();
-	if let Some(process) = sys.processes().get(&pid) {
-		println!("Memory usage: {}kb", process.memory() / 1024);
+	if conf.debug {
+		let sys = System::new_all();
+		let pid = sysinfo::get_current_pid().unwrap();
+		if let Some(process) = sys.processes().get(&pid) {
+			println!("Memory usage: {}kb", process.memory() / 1024);
+		}
 	}
 
 	println!("Done");

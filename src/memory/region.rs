@@ -32,6 +32,10 @@ impl MemoryRegion {
 		}
 	}
 
+	pub fn get_begin(&self) -> usize {
+		self.begin
+	}
+
 	pub fn clear(&mut self) {
 		self.data_sz = 0;
 		self.dirty = true;
@@ -39,30 +43,11 @@ impl MemoryRegion {
 	}
 
 	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-		if self.debug_name == "5375146663" {
-			println!("5375146663")
-		}
+		let path = path.to_string() + "/" + self.debug_name.as_str() + ".bin";
+		let mut file = File::create(path)?;
 
-		let path = path.to_string() + "/" + self.debug_name.as_str() + ".txt";
-		let mut contents = self
-			.data
-			.iter()
-			.map(|byte| format!("{:02x} ", byte))
-			.collect::<Vec<String>>()
-			.join("");
-
-		while contents.ends_with("00 ") {
-			contents.truncate(contents.len() - 3);
-		}
-
-		if contents.len() > 0 {
-			contents.truncate(contents.len() - 1);
-
-			let mut file = File::create(path)?;
-
-			file.write_all(contents.as_bytes())?;
-			file.flush()?;
-		}
+		file.write_all(&self.data)?;
+		file.flush()?;
 
 		Ok(())
 	}

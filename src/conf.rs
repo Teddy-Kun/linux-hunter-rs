@@ -38,12 +38,12 @@ pub struct Config {
 
 	#[arg(
 		long,
-		help = "Dumps memory to a file in the dir specified upon initialization. WARNING: very slow and memory hungry, but useful for debugging"
+		help = "Dumps memory to a file in the dir specified upon initialization. WARNING: very slow, memory hungry AND DELTES ALL CONTENTS OF THAT DIRECTORY, but useful for debugging"
 	)]
 	pub dump_mem: Option<String>,
 
-	#[arg(long, help = "Prints memory usage for debugging purposes")]
-	pub print_mem_usage: bool,
+	#[arg(short, long, help = "Enables some debug logs")]
+	pub debug: bool,
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {

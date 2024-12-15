@@ -1,5 +1,6 @@
+use memchr::memchr3;
 use nom::{
-	bytes::complete::{tag, take, take_until},
+	bytes::streaming::{tag, take, take_until},
 	sequence::tuple,
 };
 
@@ -38,17 +39,31 @@ impl PatternGetter {
 	}
 }
 
+fn get_search_index(
+	first_three_bytes: &[u8; 3],
+	input: &[u8],
+) -> Result<usize, Box<dyn std::error::Error>> {
+	match memchr3(
+		first_three_bytes[0],
+		first_three_bytes[1],
+		first_three_bytes[2],
+		input,
+	) {
+		Some(pos) => Ok(pos),
+		None => Err(Error::new("pattern not found").into()),
+	}
+}
+
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
 pub fn find_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
-	let sliced = match take_until::<_, _, nom::error::Error<&[u8]>>(&initial_bytes[..])(input) {
-		Ok((res, _)) => res,
-		Err(_) => return Err(Error::new("pattern not found").into()),
-	};
+	let mut sliced;
+	let pos = get_search_index(&initial_bytes, input)?;
+	sliced = &input[pos..];
 
-	match tuple((
-		tag::<_, _, nom::error::Error<&[u8]>>(initial_bytes),
+	let mut pattern = tuple((
+		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
 		take(4usize),
 		tag(&[
 			0x48, 0x8D, 0x54, 0x24, 0x38, 0xC6, 0x44, 0x24, 0x20, 0x00, 0xE8,
@@ -58,11 +73,22 @@ pub fn find_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Err
 			0x48, 0x8B, 0x5C, 0x24, 0x70, 0x48, 0x8B, 0x7C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x68,
 			0xC3,
 		]),
-	))(sliced)
-	{
-		Ok((_, res)) => Ok([res.0, res.1, res.2, res.3, res.4].concat()),
-		Err(_) => Err(Error::new("pattern not found").into()),
+	));
+
+	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
+	while sliced.len() > 37 {
+		match pattern(sliced) {
+			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Err(_) => {
+				// we can safely skip the same amount of bytes that we search for, since we failed to find it
+				sliced = &sliced[37..];
+				let pos = get_search_index(&initial_bytes, sliced)?;
+				sliced = &sliced[pos..];
+			}
+		}
 	}
+
+	Err(Error::new("pattern not found").into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8
@@ -71,11 +97,11 @@ pub fn find_current_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
 
 	let sliced = match take_until::<_, _, nom::error::Error<&[u8]>>(&initial_bytes[..])(input) {
 		Ok((res, _)) => res,
-		Err(_) => return Err(Error::new("pattern not found; early").into()),
+		Err(_) => return Err(Error::new("pattern not found").into()),
 	};
 
 	match tuple((
-		tag::<_, _, nom::error::Error<&[u8]>>(initial_bytes),
+		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
 		take(4usize),
 		tag(&[0x48, 0x8D, 0x55]),
 		take(1usize),
@@ -83,7 +109,7 @@ pub fn find_current_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
 	))(sliced)
 	{
 		Ok((_, res)) => Ok([res.0, res.1, res.2, res.3, res.4].concat()),
-		Err(_) => Err(Error::new("pattern not found; late").into()),
+		Err(_) => Err(Error::new("pattern not found").into()),
 	}
 }
 
@@ -237,9 +263,13 @@ mod tests {
 	#[test]
 	fn test_find_player_name() {
 		let data = vec![
-			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x54, 0x24, 0x38, 0xC6,
-			0x44, 0x24, 0x20, 0x00, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x5C, 0x24, 0x70,
-			0x48, 0x8B, 0x7C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x68, 0xC3, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x48, 0x8b, 0x0d, 0x0a, 0x0c, 0xba, 0x04, 0x48, 0x8d, 0x54, 0x24, 0x38, 0xc6, 0x44,
+			0x24, 0x20, 0x00, 0xe8, 0x23, 0xfb, 0x4d, 0x01, 0x48, 0x8b, 0x5c, 0x24, 0x70, 0x48,
+			0x8b, 0x7c, 0x24, 0x60, 0x48, 0x83, 0xc4, 0x68, 0xc3, 0x48, 0x63, 0x87, 0x58, 0x02,
+			0x00, 0x00, 0x4c, 0x8d, 0x0d, 0xd6, 0xab, 0xac, 0x00, 0x4c, 0x8b, 0x47, 0x08, 0x8b,
+			0x94, 0x87, 0x28, 0x02, 0x00, 0x00, 0xe8, 0x66,
 		];
 
 		if let Err(e) = find_player_name(&data) {

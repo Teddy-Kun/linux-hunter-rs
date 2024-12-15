@@ -5,11 +5,18 @@ use sscanf::scanf;
 
 use super::region::MemoryRegion;
 
-pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
+pub fn get_memory_regions(
+	pid: Pid,
+	debug: bool,
+) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
 	let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";
 	let maps = fs::read_to_string(&maps_path)?;
 
 	let mut regions: Vec<MemoryRegion> = Vec::new();
+
+	if debug {
+		println!("lines: {}", maps.lines().count());
+	}
 
 	for line in maps.lines() {
 		match scanf!(
@@ -22,10 +29,14 @@ pub fn get_memory_regions(pid: Pid) -> Result<Vec<MemoryRegion>, Box<dyn std::er
 					continue;
 				}
 
-				let reg = MemoryRegion::new(begin, end, itoa::Buffer::new().format(begin), line);
+				let reg = MemoryRegion::new(begin, end, &format!("{:x}", begin), line);
 				regions.push(reg);
 			}
 		};
+	}
+
+	if debug {
+		println!("regions: {}", regions.len());
 	}
 
 	Ok(regions)
