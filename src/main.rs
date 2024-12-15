@@ -199,7 +199,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let mut terminal = ratatui::init();
-	App::default().run(&mut terminal)?;
+	App::new(&conf).run(&mut terminal)?;
 	ratatui::restore();
 
 	Ok(())

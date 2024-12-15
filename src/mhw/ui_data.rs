@@ -1,9 +1,20 @@
+use std::fmt::Display;
+
 #[derive(Debug)]
 pub enum Crown {
-	None,
 	SmallGold,
 	Silver,
 	Gold,
+}
+
+impl Display for Crown {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Crown::SmallGold => write!(f, "Small Gold"),
+			Crown::Silver => write!(f, "Silver"),
+			Crown::Gold => write!(f, "Gold"),
+		}
+	}
 }
 
 #[derive(Debug)]
@@ -18,7 +29,7 @@ pub struct MonsterInfo {
 	pub name: String,
 	pub hp: u32,
 	pub max_hp: u32,
-	pub crown: Crown,
+	pub crown: Option<Crown>,
 }
 
 impl MonsterInfo {
@@ -28,7 +39,7 @@ impl MonsterInfo {
 			name: "<N/A>".to_string(),
 			hp: 0,
 			max_hp: 0,
-			crown: Crown::None,
+			crown: None,
 		}
 	}
 

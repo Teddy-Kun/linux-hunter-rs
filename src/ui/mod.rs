@@ -1,25 +1,39 @@
+mod monster;
+
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{
-	buffer::Buffer,
-	layout::Rect,
-	style::Stylize,
-	symbols::border,
-	text::{Line, Text},
-	widgets::{Block, Paragraph, Widget},
-	DefaultTerminal, Frame,
-};
+use linux_hunter_lib::mhw::ui_data::Crown;
+use monster::Monster;
+use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget, DefaultTerminal, Frame};
 
-#[derive(Debug, Default)]
-pub struct App {
-	counter: u8,
+use crate::conf::Config;
+
+#[derive(Debug)]
+pub struct App<'a> {
 	exit: bool,
+
+	conf: &'a Config,
+
+	max_hp: u32,
+	hp: u32,
 }
 
-impl App {
+impl<'a> App<'a> {
+	pub fn new(conf: &'a Config) -> Self {
+		Self {
+			conf,
+			exit: false,
+			max_hp: 0,
+			hp: 0,
+		}
+	}
+
 	/// runs the application's main loop until the user quits
 	pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+		self.max_hp = 20600;
+		self.hp = 20600;
+
 		while !self.exit {
 			terminal.draw(|frame| self.draw(frame))?;
 			self.handle_events()?;
@@ -58,38 +72,29 @@ impl App {
 	}
 
 	fn increment_counter(&mut self) {
-		self.counter += 1;
+		self.hp += 120;
+		if self.hp >= self.max_hp {
+			self.hp = self.max_hp;
+		}
 	}
 
 	fn decrement_counter(&mut self) {
-		self.counter -= 1;
+		if self.hp >= 120 {
+			self.hp -= 120;
+		} else {
+			self.hp = 0;
+		}
 	}
 }
 
-impl Widget for &App {
+impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
-		let title = Line::from(" Counter App Tutorial ".bold());
-		let instructions = Line::from(vec![
-			" Decrement ".into(),
-			"<Left>".blue().bold(),
-			" Increment ".into(),
-			"<Right>".blue().bold(),
-			" Quit ".into(),
-			"<Q> ".blue().bold(),
-		]);
-		let block = Block::bordered()
-			.title(title.centered())
-			.title_bottom(instructions.centered())
-			.border_set(border::THICK);
-
-		let counter_text = Text::from(vec![Line::from(vec![
-			"Value: ".into(),
-			self.counter.to_string().yellow(),
-		])]);
-
-		Paragraph::new(counter_text)
-			.centered()
-			.block(block)
+		let crown = match self.conf.show_crowns {
+			true => Some(Crown::SmallGold),
+			false => None,
+		};
+		Monster::new("Rathalos", self.max_hp, crown)
+			.update_hp(self.hp)
 			.render(area, buf);
 	}
 }
