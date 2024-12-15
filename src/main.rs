@@ -18,8 +18,8 @@ use linux_hunter_lib::{
 
 use nix::unistd::Pid;
 use std::{
-	sync::{atomic::AtomicBool, Arc},
-	thread::sleep,
+	sync::{atomic::AtomicBool, Arc, Mutex},
+	thread::{self, sleep},
 	time::Duration,
 };
 use sysinfo::System;
@@ -79,25 +79,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("found {} regions", regions.len());
 
-	let mut pattern_getters: Vec<PatternGetter> = vec![
-		PatternGetter::new("PlayerName", find_player_name),
-		PatternGetter::new("CurrentPlayerName", find_current_player_name),
-		PatternGetter::new("PlayerDamage", find_player_damage),
-		PatternGetter::new("Monster", find_monster),
-		PatternGetter::new("PlayerBuff", find_player_buff),
-		PatternGetter::new("Emetta", find_emetta),
-		PatternGetter::new("PlayerNameLinux", find_player_name_linux),
-		PatternGetter::new("LobbyStatus", find_lobby_status),
+	let mut pattern_getters = [
+		Arc::new(Mutex::new(PatternGetter::new(
+			"PlayerName",
+			find_player_name,
+		))),
+		Arc::new(Mutex::new(PatternGetter::new(
+			"CurrentPlayerName",
+			find_current_player_name,
+		))),
+		Arc::new(Mutex::new(PatternGetter::new(
+			"PlayerDamage",
+			find_player_damage,
+		))),
+		Arc::new(Mutex::new(PatternGetter::new("Monster", find_monster))),
+		Arc::new(Mutex::new(PatternGetter::new(
+			"PlayerBuff",
+			find_player_buff,
+		))),
+		Arc::new(Mutex::new(PatternGetter::new("Emetta", find_emetta))),
+		Arc::new(Mutex::new(PatternGetter::new(
+			"PlayerNameLinux",
+			find_player_name_linux,
+		))),
+		Arc::new(Mutex::new(PatternGetter::new(
+			"LobbyStatus",
+			find_lobby_status,
+		))),
 	];
 
+	let regions_arc = Arc::new(regions);
+	let mut threads = Vec::new();
 	for get_pattern in &mut pattern_getters {
-		for (i, region) in regions.iter().enumerate() {
-			if let Ok(_) = get_pattern.search(&region.data) {
-				get_pattern.index = i;
-				println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
-				break;
+		let regions_clone = Arc::clone(&regions_arc);
+		let get_pattern = Arc::clone(&get_pattern);
+		let handle = thread::spawn(move || {
+			for (i, region) in regions_clone.iter().enumerate() {
+				let mut get_pattern = get_pattern.lock().unwrap();
+				if let Ok(_) = get_pattern.search(&region.data) {
+					get_pattern.index = i;
+					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
+					break;
+				}
 			}
-		}
+		});
+		threads.push(handle);
+	}
+
+	for handle in threads {
+		handle.join().unwrap();
 	}
 
 	// TODO: remove
@@ -112,17 +142,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Done");
 
-	if pattern_getters[PLAYER_NAME_LINUX].result.is_none()
-		|| pattern_getters[PLAYER_DAMAGE].result.is_none()
+	if pattern_getters[PLAYER_NAME_LINUX]
+		.lock()
+		.unwrap()
+		.result
+		.is_none()
+		|| pattern_getters[PLAYER_DAMAGE]
+			.lock()
+			.unwrap()
+			.result
+			.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
 	}
 
-	if pattern_getters[PLAYER_DAMAGE].result.is_none() {
+	if pattern_getters[PLAYER_DAMAGE]
+		.lock()
+		.unwrap()
+		.result
+		.is_none()
+	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerDamage").into());
 	}
 
-	if conf.show_monsters && pattern_getters[MONSTER].result.is_none() {
+	if conf.show_monsters && pattern_getters[MONSTER].lock().unwrap().result.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
