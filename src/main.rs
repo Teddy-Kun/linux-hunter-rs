@@ -87,7 +87,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	println!("found {} regions", regions.len());
+	if conf.debug {
+		println!("found {} regions", regions.len());
+	}
 
 	let mut pattern_getters = [
 		Arc::new(Mutex::new(PatternGetter::new(
