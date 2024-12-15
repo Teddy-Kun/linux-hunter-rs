@@ -6,13 +6,13 @@ use crossterm::event::{self, KeyCode, KeyEventKind};
 use linux_hunter_lib::{
 	err::Error,
 	memory::{
+		get_memory_regions,
 		pattern::{
 			find_current_player_name, find_emetta, find_lobby_status, find_monster,
 			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
 			PatternGetter,
 		},
 		region::verify_regions,
-		scraper::get_memory_regions,
 	},
 	mhw::find_mhw_pid,
 };
@@ -152,6 +152,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("Done");
 
+	if conf.debug {
+		for pg in &pattern_getters {
+			let pg = pg.lock().unwrap();
+			println!(
+				"{}\n: Found: {}\n Index: {}\n",
+				pg.debug_name,
+				pg.result.is_some(),
+				pg.index
+			);
+		}
+	}
+
 	if pattern_getters[PLAYER_NAME_LINUX]
 		.lock()
 		.unwrap()
@@ -177,6 +189,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if conf.show_monsters && pattern_getters[MONSTER].lock().unwrap().result.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
+	}
+
+	if conf.debug {
+		return Ok(());
 	}
 
 	let mut terminal = ratatui::init();
