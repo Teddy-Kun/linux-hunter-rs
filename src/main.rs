@@ -19,7 +19,6 @@ use linux_hunter_lib::{
 use nix::unistd::Pid;
 use std::{
 	fs::{create_dir, remove_dir_all},
-	sync::{Arc, Mutex},
 	thread::sleep,
 	time::Duration,
 };
@@ -92,37 +91,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let mut pattern_getters = [
-		Arc::new(Mutex::new(PatternGetter::new(
-			"PlayerName",
-			find_player_name,
-		))),
-		Arc::new(Mutex::new(PatternGetter::new(
-			"CurrentPlayerName",
-			find_current_player_name,
-		))),
-		Arc::new(Mutex::new(PatternGetter::new(
-			"PlayerDamage",
-			find_player_damage,
-		))),
-		Arc::new(Mutex::new(PatternGetter::new("Monster", find_monster))),
-		Arc::new(Mutex::new(PatternGetter::new(
-			"PlayerBuff",
-			find_player_buff,
-		))),
-		Arc::new(Mutex::new(PatternGetter::new("Emetta", find_emetta))),
-		Arc::new(Mutex::new(PatternGetter::new(
-			"PlayerNameLinux",
-			find_player_name_linux,
-		))),
-		Arc::new(Mutex::new(PatternGetter::new(
-			"LobbyStatus",
-			find_lobby_status,
-		))),
+		PatternGetter::new("PlayerName", find_player_name),
+		PatternGetter::new("CurrentPlayerName", find_current_player_name),
+		PatternGetter::new("PlayerDamage", find_player_damage),
+		PatternGetter::new("Monster", find_monster),
+		PatternGetter::new("PlayerBuff", find_player_buff),
+		PatternGetter::new("Emetta", find_emetta),
+		PatternGetter::new("PlayerNameLinux", find_player_name_linux),
+		PatternGetter::new("LobbyStatus", find_lobby_status),
 	];
 
 	for get_pattern in &mut pattern_getters {
 		for (i, region) in regions.iter().enumerate() {
-			let mut get_pattern = get_pattern.lock().unwrap();
+			let get_pattern = &mut *get_pattern;
 			if get_pattern.search(&region.data).is_ok() {
 				if conf.debug {
 					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
@@ -146,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if conf.debug {
 		for pg in &pattern_getters {
-			let pg = pg.lock().unwrap();
+			let pg = pg;
 			println!(
 				"{}:\n Found: {}\n Index: {:?}\n",
 				pg.debug_name,
@@ -156,30 +137,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	if pattern_getters[PLAYER_NAME_LINUX]
-		.lock()
-		.unwrap()
-		.region
-		.is_none()
-		|| pattern_getters[PLAYER_DAMAGE]
-			.lock()
-			.unwrap()
-			.region
-			.is_none()
+	if pattern_getters[PLAYER_NAME_LINUX].region.is_none()
+		|| pattern_getters[PLAYER_DAMAGE].region.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
 	}
 
-	if pattern_getters[PLAYER_DAMAGE]
-		.lock()
-		.unwrap()
-		.region
-		.is_none()
-	{
+	if pattern_getters[PLAYER_DAMAGE].region.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::PlayerDamage").into());
 	}
 
-	if conf.show_monsters && pattern_getters[MONSTER].lock().unwrap().region.is_none() {
+	if conf.show_monsters && pattern_getters[MONSTER].region.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
