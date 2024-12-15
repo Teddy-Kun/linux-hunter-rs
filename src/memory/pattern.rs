@@ -6,19 +6,18 @@ use nom::{
 
 use crate::err::Error;
 
+pub type MemSearchResult = Result<Vec<u8>, Box<dyn std::error::Error>>;
+
 #[derive(Debug)]
 pub struct PatternGetter {
 	pub result: Option<Vec<u8>>,
 	pub debug_name: String,
-	find_func: fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>,
+	find_func: fn(&[u8]) -> MemSearchResult,
 	pub index: usize, // for saving the index of the region of the found pattern
 }
 
 impl PatternGetter {
-	pub fn new(
-		debug_name: &str,
-		find_func: fn(&[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>,
-	) -> Self {
+	pub fn new(debug_name: &str, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
 		PatternGetter {
 			result: None,
 			debug_name: debug_name.to_string(),
@@ -55,7 +54,7 @@ fn get_search_index(
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
-pub fn find_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
@@ -92,7 +91,7 @@ pub fn find_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Err
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8
-pub fn find_current_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
@@ -124,7 +123,7 @@ pub fn find_current_player_name(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::er
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 04 33 C9
-pub fn find_player_damage(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
@@ -156,7 +155,7 @@ pub fn find_player_damage(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::E
 }
 
 // 48 8B 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 0D
-pub fn find_monster(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_monster(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
@@ -190,7 +189,7 @@ pub fn find_monster(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>
 }
 
 // 48 8B 05 ?? ?? ?? ?? 41 8B 94 00 ?? ?? ?? ?? 89 57
-pub fn find_player_buff(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x05];
 
 	let mut sliced;
@@ -222,7 +221,7 @@ pub fn find_player_buff(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Err
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E ?? F3 0F 10 86 ?? ?? ?? ?? F3 0F 58 86 ?? ?? ?? ?? F3 0F 11 86 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E
-pub fn find_lobby_status(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
@@ -270,7 +269,7 @@ pub fn find_lobby_status(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Er
 }
 
 // 45 6D 65 74 74 61
-pub fn find_emetta(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_emetta(input: &[u8]) -> MemSearchResult {
 	// TODO: potentially modify this to be faster, after fixing it in the first place
 	let initial_bytes = [0x45, 0x6D, 0x65, 0x74, 0x74, 0x61];
 
@@ -286,7 +285,7 @@ pub fn find_emetta(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24 60 48 83 C4 50 5F C3
-pub fn find_player_name_linux(input: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;

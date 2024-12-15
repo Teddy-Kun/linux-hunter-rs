@@ -87,7 +87,7 @@ impl MemoryRegion {
 	}
 }
 
-pub fn verify_regions(regions: &Vec<MemoryRegion>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn verify_regions(regions: &[MemoryRegion]) -> Result<(), Box<dyn std::error::Error>> {
 	let mut prev_beg = regions[0].begin;
 	for region in regions.iter().skip(1) {
 		if region.begin < prev_beg {

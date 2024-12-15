@@ -128,7 +128,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let handle = thread::spawn(move || {
 			for (i, region) in regions_clone.iter().enumerate() {
 				let mut get_pattern = get_pattern.lock().unwrap();
-				if let Ok(_) = get_pattern.search(&region.data) {
+				if get_pattern.search(&region.data).is_ok() {
 					get_pattern.index = i;
 					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
 					break;
