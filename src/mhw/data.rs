@@ -48,19 +48,31 @@ impl MonsterInfo {
 	}
 }
 
+#[derive(Debug, Default)]
 pub struct UiInfo {
-	pub player_info: [Option<PlayerInfo>; 4],
-	pub monster_info: [Option<MonsterInfo>; 3],
+	pub players: [Option<PlayerInfo>; 4],
+	pub monsters: [Option<MonsterInfo>; 3],
 	pub session_id: String,
 	pub host_name: String,
 }
 
 impl UiInfo {
+	pub fn get_total_damage(&self) -> usize {
+		let mut total: usize = 0;
+		for p in &self.players {
+			if let Some(player) = p {
+				total += player.damage;
+			}
+		}
+
+		total
+	}
+
 	pub fn get_num_players(&self) -> usize {
-		self.player_info.iter().filter(|p| p.is_some()).count()
+		self.players.iter().filter(|p| p.is_some()).count()
 	}
 
 	pub fn get_num_monsters(&self) -> usize {
-		self.monster_info.iter().filter(|m| m.is_some()).count()
+		self.monsters.iter().filter(|m| m.is_some()).count()
 	}
 }

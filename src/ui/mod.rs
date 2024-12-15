@@ -4,7 +4,7 @@ mod player;
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use linux_hunter_lib::mhw::data::{Crown, MonsterInfo, PlayerInfo};
+use linux_hunter_lib::mhw::data::{Crown, MonsterInfo, PlayerInfo, UiInfo};
 use monster::Monster;
 use player::Player;
 use ratatui::{
@@ -21,9 +21,7 @@ pub struct App<'a> {
 	exit: bool,
 
 	conf: &'a Config,
-
-	players: Vec<PlayerInfo>,
-	monsters: Vec<MonsterInfo>,
+	data: UiInfo,
 }
 
 impl<'a> App<'a> {
@@ -31,25 +29,33 @@ impl<'a> App<'a> {
 		Self {
 			conf,
 			exit: false,
-			monsters: Vec::new(),
-			players: Vec::new(),
+			data: UiInfo::default(),
 		}
 	}
 
 	/// runs the application's main loop until the user quits
 	pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-		self.players = vec![PlayerInfo {
-			name: "Player 1".to_string(),
-			damage: 2500,
-			left_session: false,
-		}];
+		self.data.players = [
+			Some(PlayerInfo {
+				name: "Player 1".to_string(),
+				damage: 2500,
+				left_session: false,
+			}),
+			None,
+			None,
+			None,
+		];
 
-		self.monsters = vec![MonsterInfo {
-			name: "Rathalos".to_string(),
-			crown: Some(Crown::Gold),
-			hp: 12586,
-			max_hp: 20600,
-		}];
+		self.data.monsters = [
+			Some(MonsterInfo {
+				name: "Rathalos".to_string(),
+				crown: Some(Crown::Gold),
+				hp: 12586,
+				max_hp: 20600,
+			}),
+			None,
+			None,
+		];
 
 		while !self.exit {
 			terminal.draw(|frame| self.draw(frame))?;
@@ -91,7 +97,7 @@ impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
 		let mut constraints = Vec::new();
 
-		for _ in 0..self.players.len() + self.monsters.len() {
+		for _ in 0..self.data.get_num_players() + self.data.get_num_monsters() {
 			constraints.push(Constraint::Fill(1));
 		}
 
@@ -100,37 +106,36 @@ impl<'a> Widget for &'a App<'a> {
 			.constraints(constraints)
 			.split(area);
 
-		let mut total_damage = 0;
-
-		for player in &self.players {
-			total_damage += player.damage;
-		}
-
+		let total_damage = self.data.get_total_damage();
 		let mut index = 0;
 
-		for player in &self.players {
-			let name = match player.left_session {
-				true => "<Left Session>",
-				false => &player.name,
-			};
+		for player in &self.data.players {
+			if let Some(player) = player {
+				let name = match player.left_session {
+					true => "<Left Session>",
+					false => &player.name,
+				};
 
-			Player::new(name)
-				.update_damage(player.damage, total_damage)
-				.render(layout[index], buf);
-			index += 1;
+				Player::new(name)
+					.update_damage(player.damage, total_damage)
+					.render(layout[index], buf);
+				index += 1;
+			}
 		}
 
 		if self.conf.show_monsters {
-			for monster in &self.monsters {
-				let crown = match self.conf.show_crowns {
-					true => monster.crown,
-					false => None,
-				};
+			for monster in &self.data.monsters {
+				if let Some(monster) = monster {
+					let crown = match self.conf.show_crowns {
+						true => monster.crown,
+						false => None,
+					};
 
-				Monster::new(&monster.name, monster.max_hp, crown)
-					.update_hp(monster.hp)
-					.render(layout[index], buf);
-				index += 1;
+					Monster::new(&monster.name, monster.max_hp, crown)
+						.update_hp(monster.hp)
+						.render(layout[index], buf);
+					index += 1;
+				}
 			}
 		}
 	}
