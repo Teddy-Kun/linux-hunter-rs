@@ -4,7 +4,7 @@ mod player;
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use linux_hunter_lib::mhw::data::{Crown, MonsterInfo, PlayerInfo, UiInfo};
+use linux_hunter_lib::mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo};
 use monster::Monster;
 use player::Player;
 use ratatui::{
@@ -21,7 +21,7 @@ pub struct App<'a> {
 	exit: bool,
 
 	conf: &'a Config,
-	data: UiInfo,
+	data: FullData,
 }
 
 impl<'a> App<'a> {
@@ -29,7 +29,7 @@ impl<'a> App<'a> {
 		Self {
 			conf,
 			exit: false,
-			data: UiInfo::default(),
+			data: FullData::default(),
 		}
 	}
 

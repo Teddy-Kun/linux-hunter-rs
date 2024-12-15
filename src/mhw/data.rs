@@ -49,14 +49,14 @@ impl MonsterInfo {
 }
 
 #[derive(Debug, Default)]
-pub struct UiInfo {
+pub struct FullData {
 	pub players: [Option<PlayerInfo>; 4],
 	pub monsters: [Option<MonsterInfo>; 3],
 	pub session_id: String,
 	pub host_name: String,
 }
 
-impl UiInfo {
+impl FullData {
 	pub fn get_total_damage(&self) -> usize {
 		let mut total: usize = 0;
 		for p in &self.players {
