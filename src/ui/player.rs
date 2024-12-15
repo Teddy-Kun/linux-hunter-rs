@@ -26,7 +26,7 @@ impl<'a> Player<'a> {
 	}
 }
 
-impl<'a> Widget for &Player<'a> {
+impl Widget for &Player<'_> {
 	fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
 		let layout = Layout::default()
 			.direction(Direction::Horizontal)
@@ -43,7 +43,7 @@ impl<'a> Widget for &Player<'a> {
 			.split(layout[1]);
 
 		Gauge::default()
-			.block(Block::bordered().title(format!("{}", self.name)))
+			.block(Block::bordered().title(self.name.to_string()))
 			.gauge_style(Style::new().white().on_black())
 			.ratio(self.damage_delt as f64 / self.total_damage as f64)
 			.render(layout[0], buf);

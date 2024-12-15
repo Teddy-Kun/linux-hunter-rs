@@ -35,7 +35,7 @@ impl<'a> Monster<'a> {
 	}
 }
 
-impl<'a> Widget for &Monster<'a> {
+impl Widget for &Monster<'_> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
 		let layout = Layout::default()
 			.direction(Direction::Horizontal)
@@ -60,7 +60,7 @@ impl<'a> Widget for &Monster<'a> {
 		let sublayout_right = sublayout_right.split(layout[2]);
 
 		Gauge::default()
-			.block(Block::bordered().title(format!("{}", self.name)))
+			.block(Block::bordered().title(self.name.to_string()))
 			.gauge_style(Style::new().white().on_black())
 			.ratio(self.hp as f64 / self.max_hp as f64)
 			.render(layout[0], buf);

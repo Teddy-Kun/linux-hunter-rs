@@ -59,10 +59,8 @@ pub struct FullData {
 impl FullData {
 	pub fn get_total_damage(&self) -> usize {
 		let mut total: usize = 0;
-		for p in &self.players {
-			if let Some(player) = p {
-				total += player.damage;
-			}
+		for player in self.players.iter().flatten() {
+			total += player.damage;
 		}
 
 		total

@@ -82,9 +82,8 @@ impl<'a> App<'a> {
 	}
 
 	fn handle_key_event(&mut self, key_event: KeyEvent) {
-		match key_event.code {
-			KeyCode::Char('q') => self.exit(),
-			_ => {}
+		if let KeyCode::Char('q') = key_event.code {
+			self.exit()
 		}
 	}
 
@@ -109,33 +108,29 @@ impl<'a> Widget for &'a App<'a> {
 		let total_damage = self.data.get_total_damage();
 		let mut index = 0;
 
-		for player in &self.data.players {
-			if let Some(player) = player {
-				let name = match player.left_session {
-					true => "<Left Session>",
-					false => &player.name,
-				};
+		for player in self.data.players.iter().flatten() {
+			let name = match player.left_session {
+				true => "<Left Session>",
+				false => &player.name,
+			};
 
-				Player::new(name)
-					.update_damage(player.damage, total_damage)
-					.render(layout[index], buf);
-				index += 1;
-			}
+			Player::new(name)
+				.update_damage(player.damage, total_damage)
+				.render(layout[index], buf);
+			index += 1;
 		}
 
 		if self.conf.show_monsters {
-			for monster in &self.data.monsters {
-				if let Some(monster) = monster {
-					let crown = match self.conf.show_crowns {
-						true => monster.crown,
-						false => None,
-					};
+			for monster in self.data.monsters.iter().flatten() {
+				let crown = match self.conf.show_crowns {
+					true => monster.crown,
+					false => None,
+				};
 
-					Monster::new(&monster.name, monster.max_hp, crown)
-						.update_hp(monster.hp)
-						.render(layout[index], buf);
-					index += 1;
-				}
+				Monster::new(&monster.name, monster.max_hp, crown)
+					.update_hp(monster.hp)
+					.render(layout[index], buf);
+				index += 1;
 			}
 		}
 	}

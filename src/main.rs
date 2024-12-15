@@ -127,7 +127,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if conf.debug {
 		for pg in &pattern_getters {
-			let pg = pg;
 			let region_len = match pg.region {
 				Some(region) => region.len(),
 				None => 0,

@@ -29,7 +29,7 @@ impl<'a> PatternGetter<'a> {
 	pub fn search(&mut self, input: &'a [u8]) -> Result<(), Box<dyn std::error::Error>> {
 		match (self.find_func)(input) {
 			Ok(res) => {
-				self.region = Some(&input);
+				self.region = Some(input);
 				self.index = Some(res);
 			}
 			Err(e) => {
@@ -280,11 +280,11 @@ pub fn find_emetta(input: &[u8]) -> MemSearchResult {
 					return Ok(pos);
 				}
 
-				return Err(Error::new("pattern not found").into());
+				Err(Error::new("pattern not found").into())
 			}
-			Err(e) => return Err(e),
+			Err(e) => Err(e),
 		},
-		Err(e) => return Err(e),
+		Err(e) => Err(e),
 	}
 }
 
