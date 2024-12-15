@@ -26,24 +26,24 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 			};
 
 			// check if dirs name is a pid
-			if !name.chars().all(|c| c.is_digit(10)) {
+			if !name.chars().all(|c| c.is_ascii_digit()) {
 				continue;
 			}
 
 			// try to open "/proc/pid/cmdline"
 			let mut file =
-				match fs::File::open(format!("{}/cmdline", path.to_string_lossy().to_string())) {
+				match fs::File::open(format!("{}/cmdline", path.to_string_lossy())) {
 					Ok(file) => file,
 					Err(_) => continue,
 				};
 
 			// try to read the contents of cmdline
 			let mut contents = String::new();
-			if let Err(_) = file.read_to_string(&mut contents) {
+			if file.read_to_string(&mut contents).is_err() {
 				continue;
 			}
 
-			if let Some(_) = contents.find(MHW_EXE) {
+			if contents.contains(MHW_EXE) {
 				// TODO: implement the simple path logic
 				// is that even necessary?
 				return Ok(Pid::from_raw(name.parse::<i32>()?));

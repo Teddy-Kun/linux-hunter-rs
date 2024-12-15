@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	for get_pattern in &mut pattern_getters {
 		// clone the stuff so we can do things in parallel
 		let regions_clone = Arc::clone(&regions_arc);
-		let get_pattern = Arc::clone(&get_pattern);
+		let get_pattern = Arc::clone(get_pattern);
 
 		let handle = thread::spawn(move || {
 			for (i, region) in regions_clone.iter().enumerate() {
