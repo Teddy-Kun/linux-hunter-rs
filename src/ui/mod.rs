@@ -5,7 +5,12 @@ use std::io;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::mhw::ui_data::Crown;
 use monster::Monster;
-use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget, DefaultTerminal, Frame};
+use ratatui::{
+	buffer::Buffer,
+	layout::{Constraint, Direction, Layout, Rect},
+	widgets::Widget,
+	DefaultTerminal, Frame,
+};
 
 use crate::conf::Config;
 
@@ -89,12 +94,30 @@ impl<'a> App<'a> {
 
 impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
+		let layout = Layout::default()
+			.direction(Direction::Vertical)
+			.constraints(vec![
+				Constraint::Min(1),
+				Constraint::Min(1),
+				Constraint::Min(1),
+			])
+			.split(area);
+
 		let crown = match self.conf.show_crowns {
 			true => Some(Crown::SmallGold),
 			false => None,
 		};
+
 		Monster::new("Rathalos", self.max_hp, crown)
 			.update_hp(self.hp)
-			.render(area, buf);
+			.render(layout[0], buf);
+
+		Monster::new("Rathian", self.max_hp, crown)
+			.update_hp(self.hp)
+			.render(layout[1], buf);
+
+		Monster::new("Yian Garuga", self.max_hp, crown)
+			.update_hp(self.hp)
+			.render(layout[2], buf);
 	}
 }
