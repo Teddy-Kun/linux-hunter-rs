@@ -1,12 +1,13 @@
 use ratatui::{
 	layout::{Constraint, Direction, Layout},
+	style::{Style, Stylize},
 	widgets::{Block, Gauge, Paragraph, Widget},
 };
 
 pub struct Player<'a> {
 	name: &'a str,
-	total_damage: u32,
-	damage_delt: u32,
+	total_damage: usize,
+	damage_delt: usize,
 }
 
 impl<'a> Player<'a> {
@@ -18,7 +19,7 @@ impl<'a> Player<'a> {
 		}
 	}
 
-	pub fn update_damage(mut self, damage: u32, total_damage: u32) -> Self {
+	pub fn update_damage(mut self, damage: usize, total_damage: usize) -> Self {
 		self.damage_delt = damage;
 		self.total_damage = total_damage;
 		self
@@ -32,14 +33,24 @@ impl<'a> Widget for &Player<'a> {
 			.constraints(vec![Constraint::Percentage(100), Constraint::Min(28)])
 			.split(area);
 
+		let sublayout = Layout::default()
+			.direction(Direction::Vertical)
+			.constraints(vec![
+				Constraint::Fill(1),
+				Constraint::Min(3),
+				Constraint::Fill(1),
+			])
+			.split(layout[1]);
+
 		Gauge::default()
 			.block(Block::bordered().title(format!("{}", self.name)))
+			.gauge_style(Style::new().white().on_black())
 			.ratio(self.damage_delt as f64 / self.total_damage as f64)
 			.render(layout[0], buf);
 
 		let damage_text = format!("Dmg: {} / {}", self.damage_delt, self.total_damage);
 		Paragraph::new(damage_text)
 			.right_aligned()
-			.render(layout[1], buf);
+			.render(sublayout[1], buf);
 	}
 }

@@ -4,7 +4,7 @@ mod player;
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use linux_hunter_lib::mhw::ui_data::Crown;
+use linux_hunter_lib::mhw::data::{Crown, MonsterInfo, PlayerInfo};
 use monster::Monster;
 use player::Player;
 use ratatui::{
@@ -22,8 +22,8 @@ pub struct App<'a> {
 
 	conf: &'a Config,
 
-	max_hp: u32,
-	hp: u32,
+	players: Vec<PlayerInfo>,
+	monsters: Vec<MonsterInfo>,
 }
 
 impl<'a> App<'a> {
@@ -31,15 +31,25 @@ impl<'a> App<'a> {
 		Self {
 			conf,
 			exit: false,
-			max_hp: 0,
-			hp: 0,
+			monsters: Vec::new(),
+			players: Vec::new(),
 		}
 	}
 
 	/// runs the application's main loop until the user quits
 	pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-		self.max_hp = 20600;
-		self.hp = 20600;
+		self.players = vec![PlayerInfo {
+			name: "Player 1".to_string(),
+			damage: 2500,
+			left_session: false,
+		}];
+
+		self.monsters = vec![MonsterInfo {
+			name: "Rathalos".to_string(),
+			crown: Some(Crown::Gold),
+			hp: 12586,
+			max_hp: 20600,
+		}];
 
 		while !self.exit {
 			terminal.draw(|frame| self.draw(frame))?;
@@ -68,8 +78,6 @@ impl<'a> App<'a> {
 	fn handle_key_event(&mut self, key_event: KeyEvent) {
 		match key_event.code {
 			KeyCode::Char('q') => self.exit(),
-			KeyCode::Left => self.decrement_counter(),
-			KeyCode::Right => self.increment_counter(),
 			_ => {}
 		}
 	}
@@ -77,66 +85,48 @@ impl<'a> App<'a> {
 	fn exit(&mut self) {
 		self.exit = true;
 	}
-
-	fn increment_counter(&mut self) {
-		self.hp += 120;
-		if self.hp >= self.max_hp {
-			self.hp = self.max_hp;
-		}
-	}
-
-	fn decrement_counter(&mut self) {
-		if self.hp >= 120 {
-			self.hp -= 120;
-		} else {
-			self.hp = 0;
-		}
-	}
 }
 
 impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
+		let mut constraints = Vec::new();
+
+		for _ in 0..self.players.len() + self.monsters.len() {
+			constraints.push(Constraint::Fill(1));
+		}
+
 		let layout = Layout::default()
 			.direction(Direction::Vertical)
-			.constraints(vec![
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-				Constraint::Fill(1),
-			])
+			.constraints(constraints)
 			.split(area);
 
-		Player::new("Player 1")
-			.update_damage(2500, 10000)
-			.render(layout[0], buf);
-		Player::new("Player 2")
-			.update_damage(2500, 10000)
-			.render(layout[1], buf);
-		Player::new("Player 3")
-			.update_damage(2500, 10000)
-			.render(layout[2], buf);
-		Player::new("Player 4")
-			.update_damage(2500, 10000)
-			.render(layout[3], buf);
+		let mut total_damage = 0;
 
-		let crown = match self.conf.show_crowns {
-			true => Some(Crown::SmallGold),
-			false => None,
-		};
+		for player in &self.players {
+			total_damage += player.damage;
+		}
 
-		Monster::new("Rathalos", self.max_hp, crown)
-			.update_hp(self.hp)
-			.render(layout[4], buf);
+		let mut index = 0;
 
-		Monster::new("Rathian", self.max_hp, crown)
-			.update_hp(self.hp)
-			.render(layout[5], buf);
+		for player in &self.players {
+			Player::new(&player.name)
+				.update_damage(player.damage, total_damage)
+				.render(layout[index], buf);
+			index += 1;
+		}
 
-		Monster::new("Yian Garuga", self.max_hp, crown)
-			.update_hp(self.hp)
-			.render(layout[6], buf);
+		if self.conf.show_monsters {
+			for monster in &self.monsters {
+				let crown = match self.conf.show_crowns {
+					true => monster.crown,
+					false => None,
+				};
+
+				Monster::new(&monster.name, monster.max_hp, crown)
+					.update_hp(monster.hp)
+					.render(layout[index], buf);
+				index += 1;
+			}
+		}
 	}
 }

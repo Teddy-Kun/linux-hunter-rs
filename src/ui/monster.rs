@@ -1,4 +1,4 @@
-use linux_hunter_lib::mhw::ui_data::Crown;
+use linux_hunter_lib::mhw::data::Crown;
 use ratatui::{
 	buffer::Buffer,
 	layout::{Constraint, Direction, Layout, Rect},
@@ -61,7 +61,7 @@ impl<'a> Widget for &Monster<'a> {
 
 		Gauge::default()
 			.block(Block::bordered().title(format!("{}", self.name)))
-			.gauge_style(Style::new().white().on_black().italic())
+			.gauge_style(Style::new().white().on_black())
 			.ratio(self.hp as f64 / self.max_hp as f64)
 			.render(layout[0], buf);
 
