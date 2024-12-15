@@ -128,11 +128,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if conf.debug {
 		for pg in &pattern_getters {
 			let pg = pg;
+			let region_len = match pg.region {
+				Some(region) => region.len(),
+				None => 0,
+			};
+
 			println!(
 				"{}:\n Found: {}\n Index: {:?}\n",
-				pg.debug_name,
-				pg.region.is_some(),
-				pg.index
+				pg.debug_name, region_len, pg.index
 			);
 		}
 	}

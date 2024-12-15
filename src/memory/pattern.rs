@@ -1,6 +1,6 @@
 use memchr::memchr3;
 use nom::{
-	bytes::streaming::{tag, take, take_until},
+	bytes::streaming::{tag, take},
 	sequence::tuple,
 };
 
@@ -269,17 +269,22 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 
 // 45 6D 65 74 74 61
 pub fn find_emetta(input: &[u8]) -> MemSearchResult {
-	// TODO: potentially modify this to be faster, after fixing it in the first place
-	let initial_bytes = [0x45, 0x6D, 0x65, 0x74, 0x74, 0x61];
+	// TODO: this is 100% broken, but since it didnt work in the og... maybe remove it completely?
+	let initial_bytes = [0x45, 0x6D, 0x65];
+	let secondary_bytes = [0x74, 0x74, 0x61];
 
-	let sliced = match take_until::<_, _, nom::error::Error<&[u8]>>(&initial_bytes[..])(input) {
-		Ok((res, _)) => res,
-		Err(_) => return Err(Error::new("pattern not found").into()),
-	};
+	match get_search_index(&initial_bytes, input) {
+		Ok(pos) => match get_search_index(&secondary_bytes, &input[pos..]) {
+			Ok(pos2) => {
+				if pos2 == pos + 3 {
+					return Ok(pos);
+				}
 
-	match tuple((tag::<_, _, nom::error::Error<&[u8]>>(initial_bytes),))(sliced) {
-		Ok((_, _)) => return Ok(0),
-		Err(_) => Err(Error::new("pattern not found").into()),
+				return Err(Error::new("pattern not found").into());
+			}
+			Err(e) => return Err(e),
+		},
+		Err(e) => return Err(e),
 	}
 }
 
