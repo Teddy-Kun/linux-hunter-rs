@@ -1,3 +1,5 @@
+pub mod ui_data;
+
 use crate::err::Error;
 
 use nix::unistd::Pid;
@@ -43,6 +45,7 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 
 			if let Some(_) = contents.find(MHW_EXE) {
 				// TODO: implement the simple path logic
+				// is that even necessary?
 				return Ok(Pid::from_raw(name.parse::<i32>()?));
 			}
 		}
