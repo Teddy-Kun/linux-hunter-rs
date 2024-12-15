@@ -2,6 +2,7 @@ mod conf;
 mod ui;
 
 use conf::get_config;
+use crossterm::event::{self, KeyCode, KeyEventKind};
 use linux_hunter_lib::{
 	err::Error,
 	memory::{
@@ -19,7 +20,7 @@ use linux_hunter_lib::{
 use nix::unistd::Pid;
 use std::{
 	fs::{create_dir, remove_dir_all},
-	sync::{atomic::AtomicBool, Arc, Mutex},
+	sync::{Arc, Mutex},
 	thread::{self, sleep},
 	time::Duration,
 };
@@ -141,9 +142,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		handle.join().unwrap();
 	}
 
-	// TODO: remove
-	println!("Patterns {:#?}", pattern_getters);
-
 	if conf.debug {
 		let sys = System::new_all();
 		let pid = sysinfo::get_current_pid().unwrap();
@@ -181,18 +179,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
-	let run = Arc::new(AtomicBool::new(true));
-	let run_clone = Arc::clone(&run);
-
-	ctrlc::set_handler(move || {
-		run_clone.store(false, std::sync::atomic::Ordering::Relaxed);
-	})?;
-
 	let mut terminal = ratatui::init();
 	// main loop
-	while run.load(std::sync::atomic::Ordering::Relaxed) {
-		terminal.draw(draw)?;
+	loop {
+		if let event::Event::Key(key) = event::read()? {
+			if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
+				break;
+			}
+		}
 
+		terminal.draw(draw)?;
 		sleep(Duration::from_millis(1000));
 	}
 
