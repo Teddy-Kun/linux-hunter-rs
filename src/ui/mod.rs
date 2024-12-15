@@ -109,7 +109,12 @@ impl<'a> Widget for &'a App<'a> {
 		let mut index = 0;
 
 		for player in &self.players {
-			Player::new(&player.name)
+			let name = match player.left_session {
+				true => "<Left Session>",
+				false => &player.name,
+			};
+
+			Player::new(name)
 				.update_damage(player.damage, total_damage)
 				.render(layout[index], buf);
 			index += 1;
