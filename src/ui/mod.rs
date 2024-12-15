@@ -1,10 +1,12 @@
 mod monster;
+mod player;
 
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::mhw::ui_data::Crown;
 use monster::Monster;
+use player::Player;
 use ratatui::{
 	buffer::Buffer,
 	layout::{Constraint, Direction, Layout, Rect},
@@ -97,11 +99,28 @@ impl<'a> Widget for &'a App<'a> {
 		let layout = Layout::default()
 			.direction(Direction::Vertical)
 			.constraints(vec![
-				Constraint::Min(1),
-				Constraint::Min(1),
-				Constraint::Min(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
+				Constraint::Fill(1),
 			])
 			.split(area);
+
+		Player::new("Player 1")
+			.update_damage(2500, 10000)
+			.render(layout[0], buf);
+		Player::new("Player 2")
+			.update_damage(2500, 10000)
+			.render(layout[1], buf);
+		Player::new("Player 3")
+			.update_damage(2500, 10000)
+			.render(layout[2], buf);
+		Player::new("Player 4")
+			.update_damage(2500, 10000)
+			.render(layout[3], buf);
 
 		let crown = match self.conf.show_crowns {
 			true => Some(Crown::SmallGold),
@@ -110,14 +129,14 @@ impl<'a> Widget for &'a App<'a> {
 
 		Monster::new("Rathalos", self.max_hp, crown)
 			.update_hp(self.hp)
-			.render(layout[0], buf);
+			.render(layout[4], buf);
 
 		Monster::new("Rathian", self.max_hp, crown)
 			.update_hp(self.hp)
-			.render(layout[1], buf);
+			.render(layout[5], buf);
 
 		Monster::new("Yian Garuga", self.max_hp, crown)
 			.update_hp(self.hp)
-			.render(layout[2], buf);
+			.render(layout[6], buf);
 	}
 }

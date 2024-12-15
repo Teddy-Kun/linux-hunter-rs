@@ -41,7 +41,7 @@ impl<'a> Widget for &Monster<'a> {
 			.direction(Direction::Horizontal)
 			.constraints(vec![
 				Constraint::Percentage(100),
-				Constraint::Min(15),
+				Constraint::Min(17),
 				Constraint::Min(11),
 			])
 			.split(area);
@@ -50,9 +50,9 @@ impl<'a> Widget for &Monster<'a> {
 		let sublayout = Layout::default()
 			.direction(Direction::Vertical)
 			.constraints(vec![
-				Constraint::Percentage(50),
+				Constraint::Fill(1),
 				Constraint::Min(3),
-				Constraint::Percentage(50),
+				Constraint::Fill(1),
 			]);
 		let sublayout_right = sublayout.clone();
 
