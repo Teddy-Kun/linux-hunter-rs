@@ -131,7 +131,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				let mut get_pattern = get_pattern.lock().unwrap();
 				if get_pattern.search(&region.data).is_ok() {
 					get_pattern.index = i;
-					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
+					if conf.debug {
+						println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
+					}
 					break;
 				}
 			}
