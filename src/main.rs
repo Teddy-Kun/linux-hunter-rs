@@ -2,7 +2,6 @@ mod conf;
 mod ui;
 
 use conf::get_config;
-use crossterm::event::{self, KeyCode, KeyEventKind};
 use linux_hunter_lib::{
 	err::Error,
 	memory::{
@@ -25,7 +24,7 @@ use std::{
 	time::Duration,
 };
 use sysinfo::System;
-use ui::draw;
+use ui::App;
 
 pub const PLAYER_NAME: usize = 0;
 pub const CURRENT_PLAYER: usize = 1;
@@ -37,6 +36,8 @@ pub const PLAYER_NAME_LINUX: usize = 6;
 pub const LOBBY_STATUS: usize = 7;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+	let start = std::time::Instant::now();
+
 	let conf = get_config()?;
 
 	let mhw_pid;
@@ -143,6 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	if conf.debug {
+		println!("took {}ms", start.elapsed().as_millis());
+
 		let sys = System::new_all();
 		let pid = sysinfo::get_current_pid().unwrap();
 		if let Some(process) = sys.processes().get(&pid) {
@@ -196,17 +199,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let mut terminal = ratatui::init();
-	// main loop
-	loop {
-		if let event::Event::Key(key) = event::read()? {
-			if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-				break;
-			}
-		}
-
-		terminal.draw(draw)?;
-		sleep(Duration::from_millis(1000));
-	}
+	App::default().run(&mut terminal)?;
+	ratatui::restore();
 
 	Ok(())
 }

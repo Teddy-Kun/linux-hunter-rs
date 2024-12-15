@@ -1,3 +1,4 @@
+pub mod offsets;
 pub mod ui_data;
 
 use crate::err::Error;
@@ -31,11 +32,10 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 			}
 
 			// try to open "/proc/pid/cmdline"
-			let mut file =
-				match fs::File::open(format!("{}/cmdline", path.to_string_lossy())) {
-					Ok(file) => file,
-					Err(_) => continue,
-				};
+			let mut file = match fs::File::open(format!("{}/cmdline", path.to_string_lossy())) {
+				Ok(file) => file,
+				Err(_) => continue,
+			};
 
 			// try to read the contents of cmdline
 			let mut contents = String::new();
