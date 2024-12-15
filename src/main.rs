@@ -20,7 +20,7 @@ use nix::unistd::Pid;
 use std::{
 	fs::{create_dir, remove_dir_all},
 	sync::{Arc, Mutex},
-	thread::{self, sleep},
+	thread::sleep,
 	time::Duration,
 };
 use sysinfo::System;
@@ -120,31 +120,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		))),
 	];
 
-	let regions_arc = Arc::new(regions);
-	let mut threads = Vec::new();
-
 	for get_pattern in &mut pattern_getters {
-		// clone the stuff so we can do things in parallel
-		let regions_clone = Arc::clone(&regions_arc);
-		let get_pattern = Arc::clone(get_pattern);
-
-		let handle = thread::spawn(move || {
-			for (i, region) in regions_clone.iter().enumerate() {
-				let mut get_pattern = get_pattern.lock().unwrap();
-				if get_pattern.search(&region.data).is_ok() {
-					get_pattern.index = i;
-					if conf.debug {
-						println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
-					}
-					break;
+		for (i, region) in regions.iter().enumerate() {
+			let mut get_pattern = get_pattern.lock().unwrap();
+			if get_pattern.search(&region.data).is_ok() {
+				if conf.debug {
+					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
 				}
+				break;
 			}
-		});
-		threads.push(handle);
-	}
-
-	for handle in threads {
-		handle.join().unwrap();
+		}
 	}
 
 	if conf.debug {
@@ -163,9 +148,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		for pg in &pattern_getters {
 			let pg = pg.lock().unwrap();
 			println!(
-				"{}\n: Found: {}\n Index: {}\n",
+				"{}:\n Found: {}\n Index: {:?}\n",
 				pg.debug_name,
-				pg.result.is_some(),
+				pg.region.is_some(),
 				pg.index
 			);
 		}
@@ -174,12 +159,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if pattern_getters[PLAYER_NAME_LINUX]
 		.lock()
 		.unwrap()
-		.result
+		.region
 		.is_none()
 		|| pattern_getters[PLAYER_DAMAGE]
 			.lock()
 			.unwrap()
-			.result
+			.region
 			.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
@@ -188,13 +173,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if pattern_getters[PLAYER_DAMAGE]
 		.lock()
 		.unwrap()
-		.result
+		.region
 		.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerDamage").into());
 	}
 
-	if conf.show_monsters && pattern_getters[MONSTER].lock().unwrap().result.is_none() {
+	if conf.show_monsters && pattern_getters[MONSTER].lock().unwrap().region.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 

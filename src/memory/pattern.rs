@@ -6,34 +6,39 @@ use nom::{
 
 use crate::err::Error;
 
-pub type MemSearchResult = Result<Vec<u8>, Box<dyn std::error::Error>>;
+pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
 
 #[derive(Debug)]
-pub struct PatternGetter {
-	pub result: Option<Vec<u8>>,
+pub struct PatternGetter<'a> {
+	pub region: Option<&'a [u8]>, // for saving the index of the region of the found pattern
+	pub index: Option<usize>,
 	pub debug_name: String,
 	find_func: fn(&[u8]) -> MemSearchResult,
-	pub index: usize, // for saving the index of the region of the found pattern
 }
 
-impl PatternGetter {
+impl<'a> PatternGetter<'a> {
 	pub fn new(debug_name: &str, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
 		PatternGetter {
-			result: None,
+			region: None,
 			debug_name: debug_name.to_string(),
 			find_func,
-			index: 0,
+			index: None,
 		}
 	}
 
-	pub fn search(&mut self, input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+	pub fn search(&mut self, input: &'a [u8]) -> Result<(), Box<dyn std::error::Error>> {
 		match (self.find_func)(input) {
-			Ok(res) => self.result = Some(res),
+			Ok(res) => {
+				self.region = Some(&input);
+				self.index = Some(res);
+			}
 			Err(e) => {
-				self.result = None;
+				self.region = None;
+				self.index = None;
 				return Err(e);
 			}
 		};
+
 		Ok(())
 	}
 }
@@ -58,7 +63,7 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -77,11 +82,11 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -95,7 +100,7 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -109,11 +114,11 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -127,7 +132,7 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -141,11 +146,11 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -159,7 +164,7 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -175,11 +180,11 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4, res.5, res.6].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -193,7 +198,7 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x05];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -207,11 +212,11 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -225,7 +230,7 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -249,17 +254,11 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => {
-				return Ok([
-					res.0, res.1, res.2, res.3, res.4, res.5, res.6, res.7, res.8, res.9, res.10,
-					res.11, res.12, res.13, res.14,
-				]
-				.concat())
-			}
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
@@ -279,7 +278,7 @@ pub fn find_emetta(input: &[u8]) -> MemSearchResult {
 	};
 
 	match tuple((tag::<_, _, nom::error::Error<&[u8]>>(initial_bytes),))(sliced) {
-		Ok((_, res)) => Ok(res.0.to_vec()),
+		Ok((_, _)) => return Ok(0),
 		Err(_) => Err(Error::new("pattern not found").into()),
 	}
 }
@@ -289,7 +288,7 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 
 	let mut sliced;
-	let pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&initial_bytes, input)?;
 	sliced = &input[pos..];
 
 	let mut pattern = tuple((
@@ -305,11 +304,11 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > 37 {
 		match pattern(sliced) {
-			Ok((_, res)) => return Ok([res.0, res.1, res.2, res.3, res.4].concat()),
+			Ok((_, _)) => return Ok(pos),
 			Err(_) => {
 				// we can safely skip the same amount of bytes that we search for, since we failed to find it
 				sliced = &sliced[37..];
-				let pos = get_search_index(&initial_bytes, sliced)?;
+				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
 			}
 		}
