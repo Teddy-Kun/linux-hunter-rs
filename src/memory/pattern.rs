@@ -1,10 +1,9 @@
+use crate::err::Error;
 use memchr::memchr3;
 use nom::{
 	bytes::streaming::{tag, take},
 	sequence::tuple,
 };
-
-use crate::err::Error;
 
 pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
 

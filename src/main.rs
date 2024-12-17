@@ -15,7 +15,6 @@ use linux_hunter_lib::{
 	},
 	mhw::find_mhw_pid,
 };
-
 use nix::unistd::Pid;
 use std::{
 	collections::{HashMap, HashSet},
@@ -181,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	drop(regions);
 
 	let mut terminal = ratatui::init();
-	App::new(&conf).run(&mut terminal)?;
+	App::new(mhw_pid, &conf, region_map).run(&mut terminal)?;
 	ratatui::restore();
 
 	Ok(())

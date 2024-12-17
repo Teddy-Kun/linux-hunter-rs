@@ -1,11 +1,10 @@
-use std::{
-	fs::File,
-	io::{IoSliceMut, Write},
-};
-
 use nix::{
 	sys::uio::{process_vm_readv, RemoteIoVec},
 	unistd::Pid,
+};
+use std::{
+	fs::File,
+	io::{IoSliceMut, Write},
 };
 
 use crate::err::Error;

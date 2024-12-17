@@ -42,6 +42,9 @@ pub struct Config {
 	)]
 	pub dump_mem: Option<String>,
 
+	#[arg(long, help = "Shows how long it took to construct a frame in the tui")]
+	pub show_frametime: bool,
+
 	#[arg(short, long, help = "Enables some debug logs")]
 	pub debug: bool,
 }

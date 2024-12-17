@@ -2,7 +2,6 @@ pub mod data;
 pub mod offsets;
 
 use crate::err::Error;
-
 use nix::unistd::Pid;
 use std::{
 	fs::{self, read_dir},

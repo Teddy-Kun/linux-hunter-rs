@@ -1,35 +1,47 @@
 mod monster;
 mod player;
 
-use std::io;
-
+use crate::conf::Config;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use linux_hunter_lib::mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo};
+use linux_hunter_lib::{
+	memory::{region::MemoryRegion, update_regions},
+	mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo},
+};
 use monster::Monster;
+use nix::unistd::Pid;
 use player::Player;
 use ratatui::{
 	buffer::Buffer,
 	layout::{Constraint, Direction, Layout, Rect},
-	widgets::Widget,
+	widgets::{Paragraph, Widget},
 	DefaultTerminal, Frame,
 };
-
-use crate::conf::Config;
+use std::{
+	collections::HashMap,
+	io,
+	time::{Duration, Instant},
+};
 
 #[derive(Debug)]
 pub struct App<'a> {
 	exit: bool,
 
+	mhw_pid: Pid,
 	conf: &'a Config,
+	regions: HashMap<usize, MemoryRegion>,
 	data: FullData,
+	frametime: u128,
 }
 
 impl<'a> App<'a> {
-	pub fn new(conf: &'a Config) -> Self {
+	pub fn new(mhw_pid: Pid, conf: &'a Config, regions: HashMap<usize, MemoryRegion>) -> Self {
 		Self {
 			conf,
+			mhw_pid,
 			exit: false,
 			data: FullData::default(),
+			regions,
+			frametime: 0,
 		}
 	}
 
@@ -58,6 +70,17 @@ impl<'a> App<'a> {
 		];
 
 		while !self.exit {
+			let now = Instant::now();
+
+			self.data.monsters[0].as_mut().unwrap().hp -= 100;
+
+			// ignore the error for now
+			let _ = update_regions(self.mhw_pid, &mut self.regions);
+
+			if self.conf.show_frametime {
+				self.frametime = now.elapsed().as_millis();
+			}
+
 			terminal.draw(|frame| self.draw(frame))?;
 			self.handle_events()?;
 		}
@@ -70,6 +93,11 @@ impl<'a> App<'a> {
 
 	/// updates the application's state based on user input
 	fn handle_events(&mut self) -> io::Result<()> {
+		let has_event = event::poll(Duration::from_millis(100))?;
+		if !has_event {
+			return Ok(());
+		}
+
 		match event::read()? {
 			// it's important to check that the event is a key press event as
 			// crossterm also emits key release and repeat events on Windows.
@@ -96,7 +124,7 @@ impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
 		let mut constraints = Vec::new();
 
-		for _ in 0..7 {
+		for _ in 0..8 {
 			constraints.push(Constraint::Fill(1));
 		}
 
@@ -129,9 +157,13 @@ impl<'a> Widget for &'a App<'a> {
 
 				Monster::new(&monster.name, monster.max_hp, crown)
 					.update_hp(monster.hp)
-					.render(layout[4+index], buf);
+					.render(layout[4 + index], buf);
 				index += 1;
 			}
+		}
+
+		if self.conf.show_frametime {
+			Paragraph::new(format!("Frametime: {} ms", self.frametime)).render(layout[7], buf);
 		}
 	}
 }
