@@ -11,13 +11,14 @@ use linux_hunter_lib::{
 			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
 			PatternGetter,
 		},
-		region::verify_regions,
+		region::{verify_regions, MemoryRegion},
 	},
 	mhw::find_mhw_pid,
 };
 
 use nix::unistd::Pid;
 use std::{
+	collections::{HashMap, HashSet},
 	fs::{create_dir, remove_dir_all},
 	thread::sleep,
 	time::Duration,
@@ -101,10 +102,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		PatternGetter::new("LobbyStatus", find_lobby_status),
 	];
 
+	// all regions that contain a pattern are inserted here
+	let mut region_set = HashSet::new();
+
 	for get_pattern in &mut pattern_getters {
 		for (i, region) in regions.iter().enumerate() {
 			let get_pattern = &mut *get_pattern;
 			if get_pattern.search(&region.data).is_ok() {
+				region_set.insert(i);
+				get_pattern.index = Some(i);
 				if conf.debug {
 					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
 				}
@@ -127,35 +133,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if conf.debug {
 		for pg in &pattern_getters {
-			let region_len = match pg.region {
-				Some(region) => region.len(),
-				None => 0,
-			};
-
 			println!(
-				"{}:\n Found: {}\n Index: {:?}\n",
-				pg.debug_name, region_len, pg.index
+				"{}:\n Found: {}\n Offset: {:?}\n Index: {:?}\n",
+				pg.debug_name,
+				pg.offset.is_some(),
+				pg.offset,
+				pg.index
+			);
+		}
+
+		println!("Using {} regions", region_set.len());
+		for i in &region_set {
+			println!(
+				"\t{} ({}b): {}",
+				i, regions[*i].data_sz, regions[*i].debug_info
 			);
 		}
 	}
 
-	if pattern_getters[PLAYER_NAME_LINUX].region.is_none()
-		|| pattern_getters[PLAYER_DAMAGE].region.is_none()
+	if pattern_getters[PLAYER_NAME_LINUX].offset.is_none()
+		|| pattern_getters[PLAYER_DAMAGE].offset.is_none()
 	{
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
 	}
 
-	if pattern_getters[PLAYER_DAMAGE].region.is_none() {
+	if pattern_getters[PLAYER_DAMAGE].offset.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::PlayerDamage").into());
 	}
 
-	if conf.show_monsters && pattern_getters[MONSTER].region.is_none() {
+	if conf.show_monsters && pattern_getters[MONSTER].offset.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
 	if conf.debug {
 		return Ok(());
 	}
+
+	// only use the regions that contain a pattern
+	let mut region_map: HashMap<usize, MemoryRegion> =
+		HashMap::with_capacity(region_set.capacity());
+	for i in region_set {
+		let r = &regions[i];
+		region_map.insert(i, r.clone());
+	}
+
+	// drop unused regions
+	drop(regions);
 
 	let mut terminal = ratatui::init();
 	App::new(&conf).run(&mut terminal)?;

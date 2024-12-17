@@ -10,7 +10,7 @@ use nix::{
 
 use crate::err::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryRegion {
 	begin: usize,
 	pub debug_name: String,

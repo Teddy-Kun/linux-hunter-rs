@@ -9,32 +9,30 @@ use crate::err::Error;
 pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
 
 #[derive(Debug)]
-pub struct PatternGetter<'a> {
-	pub region: Option<&'a [u8]>, // for saving the index of the region of the found pattern
-	pub index: Option<usize>,
+pub struct PatternGetter {
+	pub index: Option<usize>, // index of the memory region where the pattern was found - has to be set from outside
+	pub offset: Option<usize>, // offset of where it was found, relative to the start of the region
 	pub debug_name: String,
 	find_func: fn(&[u8]) -> MemSearchResult,
 }
 
-impl<'a> PatternGetter<'a> {
+impl PatternGetter {
 	pub fn new(debug_name: &str, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
 		PatternGetter {
-			region: None,
 			debug_name: debug_name.to_string(),
 			find_func,
+			offset: None,
 			index: None,
 		}
 	}
 
-	pub fn search(&mut self, input: &'a [u8]) -> Result<(), Box<dyn std::error::Error>> {
+	pub fn search(&mut self, input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
 		match (self.find_func)(input) {
 			Ok(res) => {
-				self.region = Some(input);
-				self.index = Some(res);
+				self.offset = Some(res);
 			}
 			Err(e) => {
-				self.region = None;
-				self.index = None;
+				self.offset = None;
 				return Err(e);
 			}
 		};
