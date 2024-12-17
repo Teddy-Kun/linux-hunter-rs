@@ -96,7 +96,7 @@ impl<'a> Widget for &'a App<'a> {
 	fn render(self, area: Rect, buf: &mut Buffer) {
 		let mut constraints = Vec::new();
 
-		for _ in 0..self.data.get_num_players() + self.data.get_num_monsters() {
+		for _ in 0..7 {
 			constraints.push(Constraint::Fill(1));
 		}
 
@@ -107,7 +107,6 @@ impl<'a> Widget for &'a App<'a> {
 
 		let total_damage = self.data.get_total_damage();
 		let mut index = 0;
-
 		for player in self.data.players.iter().flatten() {
 			let name = match player.left_session {
 				true => "<Left Session>",
@@ -120,6 +119,7 @@ impl<'a> Widget for &'a App<'a> {
 			index += 1;
 		}
 
+		index = 0;
 		if self.conf.show_monsters {
 			for monster in self.data.monsters.iter().flatten() {
 				let crown = match self.conf.show_crowns {
@@ -129,7 +129,7 @@ impl<'a> Widget for &'a App<'a> {
 
 				Monster::new(&monster.name, monster.max_hp, crown)
 					.update_hp(monster.hp)
-					.render(layout[index], buf);
+					.render(layout[4+index], buf);
 				index += 1;
 			}
 		}
