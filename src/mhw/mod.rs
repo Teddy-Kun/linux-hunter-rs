@@ -1,4 +1,5 @@
 pub mod data;
+pub mod monster;
 pub mod offsets;
 
 use crate::err::Error;
