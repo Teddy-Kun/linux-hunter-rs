@@ -9,7 +9,7 @@ use linux_hunter_lib::{
 		pattern::{
 			find_current_player_name, find_emetta, find_lobby_status, find_monster,
 			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
-			PatternGetter,
+			PatternGetter, PatternType,
 		},
 		region::{verify_regions, MemoryRegion},
 	},
@@ -91,14 +91,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let mut pattern_getters = [
-		PatternGetter::new("PlayerName", find_player_name),
-		PatternGetter::new("CurrentPlayerName", find_current_player_name),
-		PatternGetter::new("PlayerDamage", find_player_damage),
-		PatternGetter::new("Monster", find_monster),
-		PatternGetter::new("PlayerBuff", find_player_buff),
-		PatternGetter::new("Emetta", find_emetta),
-		PatternGetter::new("PlayerNameLinux", find_player_name_linux),
-		PatternGetter::new("LobbyStatus", find_lobby_status),
+		PatternGetter::new(PatternType::PlayerName, find_player_name),
+		PatternGetter::new(PatternType::CurrentPlayerName, find_current_player_name),
+		PatternGetter::new(PatternType::PlayerDamage, find_player_damage),
+		PatternGetter::new(PatternType::Monsters, find_monster),
+		PatternGetter::new(PatternType::PlayerBuff, find_player_buff),
+		PatternGetter::new(PatternType::Emetta, find_emetta),
+		PatternGetter::new(PatternType::PlayerNameLinux, find_player_name_linux),
+		PatternGetter::new(PatternType::LobbyStatus, find_lobby_status),
 	];
 
 	// all regions that contain a pattern are inserted here
@@ -111,7 +111,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				region_set.insert(i);
 				get_pattern.index = Some(i);
 				if conf.debug {
-					println!("found pattern '{}' in region {}", get_pattern.debug_name, i);
+					println!(
+						"found pattern '{:?}' in region {}",
+						get_pattern.pattern_type, i
+					);
 				}
 				break;
 			}
@@ -133,8 +136,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if conf.debug {
 		for pg in &pattern_getters {
 			println!(
-				"{}:\n Found: {}\n Offset: {:?}\n Index: {:?}\n",
-				pg.debug_name,
+				"{:?}:\n Found: {}\n Offset: {:?}\n Index: {:?}\n",
+				pg.pattern_type,
 				pg.offset.is_some(),
 				pg.offset,
 				pg.index
@@ -180,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	drop(regions);
 
 	let mut terminal = ratatui::init();
-	App::new(mhw_pid, &conf, region_map).run(&mut terminal)?;
+	App::new(mhw_pid, &conf, region_map, pattern_getters).run(&mut terminal)?;
 	ratatui::restore();
 
 	Ok(())

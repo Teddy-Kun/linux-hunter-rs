@@ -8,17 +8,29 @@ use nom::{
 pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
 
 #[derive(Debug)]
+pub enum PatternType {
+	PlayerName,
+	CurrentPlayerName,
+	PlayerDamage,
+	Monsters,
+	PlayerBuff,
+	LobbyStatus,
+	Emetta,
+	PlayerNameLinux,
+}
+
+#[derive(Debug)]
 pub struct PatternGetter {
 	pub index: Option<usize>, // index of the memory region where the pattern was found - has to be set from outside
 	pub offset: Option<usize>, // offset of where it was found, relative to the start of the region
-	pub debug_name: String,
+	pub pattern_type: PatternType,
 	find_func: fn(&[u8]) -> MemSearchResult,
 }
 
 impl PatternGetter {
-	pub fn new(debug_name: &str, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
+	pub fn new(pattern_type: PatternType, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
 		PatternGetter {
-			debug_name: debug_name.to_string(),
+			pattern_type,
 			find_func,
 			offset: None,
 			index: None,
