@@ -24,6 +24,12 @@ pub struct PlayerInfo {
 	pub left_session: bool,
 }
 
+impl PlayerInfo {
+	pub fn get_player_info() -> Self {
+		todo!("get player info from bytes");
+	}
+}
+
 #[derive(Debug)]
 pub struct MonsterInfo {
 	pub name: String,
@@ -34,17 +40,7 @@ pub struct MonsterInfo {
 
 impl MonsterInfo {
 	pub fn get_monster_info() -> Self {
-		// TODO: get from data
-		MonsterInfo {
-			name: "<N/A>".to_string(),
-			hp: 0,
-			max_hp: 0,
-			crown: None,
-		}
-	}
-
-	pub fn get_hp_percentage(&self) -> f64 {
-		((self.hp as f64) / (self.max_hp as f64)) * 100.0
+		todo!("get player info from bytes");
 	}
 }
 
