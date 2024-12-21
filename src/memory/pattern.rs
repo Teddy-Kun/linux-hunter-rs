@@ -1,5 +1,4 @@
 use crate::err::Error;
-use memchr::memchr3;
 use nom::{
 	bytes::streaming::{tag, take},
 	sequence::tuple,
@@ -43,6 +42,7 @@ impl PatternGetter {
 				self.offset = Some(res);
 			}
 			Err(e) => {
+				self.index = None;
 				self.offset = None;
 				return Err(e);
 			}
@@ -56,15 +56,24 @@ pub fn get_search_index(
 	first_three_bytes: &[u8; 3],
 	input: &[u8],
 ) -> Result<usize, Box<dyn std::error::Error>> {
-	match memchr3(
-		first_three_bytes[0],
-		first_three_bytes[1],
-		first_three_bytes[2],
-		input,
-	) {
-		Some(pos) => Ok(pos),
-		None => Err(Error::new("pattern not found").into()),
+	let mut i;
+	match memchr::memchr(first_three_bytes[0], &input) {
+		Some(pos) => i = pos,
+		None => return Err(Error::new("pattern not found").into()),
+	};
+
+	while i < input.len() - 2 {
+		if input[i..3 + i] == *first_three_bytes {
+			return Ok(i);
+		}
+
+		match memchr::memchr(first_three_bytes[0], &input[i + 1..]) {
+			Some(pos) => i += pos + 1,
+			None => return Err(Error::new("pattern not found").into()),
+		};
 	}
+
+	Err(Error::new("pattern not found").into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
@@ -93,16 +102,15 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -130,16 +138,15 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -168,16 +175,15 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -208,16 +214,15 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -246,16 +251,15 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -294,16 +298,15 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
@@ -355,19 +358,125 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 
 	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
 	while sliced.len() > total_len {
+		total_pos += pos;
+
 		match pattern(sliced) {
-			Ok((_, _)) => {
-				total_pos += pos + 1;
-				return Ok(total_pos);
-			}
+			Ok((_, _)) => return Ok(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
 				sliced = &sliced[pos..];
-				total_pos += pos + 1;
+				total_pos += 1;
 			}
 		}
 	}
 
 	Err(Error::new("pattern not found").into())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_find_player_name() {
+		let data = vec![
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x48, 0x8b, 0x0d, 0x0a, 0x0c, 0xba, 0x04, 0x48, 0x8d, 0x54, 0x24, 0x38, 0xc6, 0x44,
+			0x24, 0x20, 0x00, 0xe8, 0x23, 0xfb, 0x4d, 0x01, 0x48, 0x8b, 0x5c, 0x24, 0x70, 0x48,
+			0x8b, 0x7c, 0x24, 0x60, 0x48, 0x83, 0xc4, 0x68, 0xc3, 0x48, 0x63, 0x87, 0x58, 0x02,
+			0x00, 0x00, 0x4c, 0x8d, 0x0d, 0xd6, 0xab, 0xac, 0x00, 0x4c, 0x8b, 0x47, 0x08, 0x8b,
+			0x94, 0x87, 0x28, 0x02, 0x00, 0x00, 0xe8, 0x66,
+		];
+
+		if let Err(e) = find_player_name(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	#[test]
+	fn test_find_current_player_name() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x55, 0x00, 0x45, 0x31,
+			0xC9, 0x41, 0x89, 0xC0, 0xE8, 0x00,
+		];
+
+		if let Err(e) = find_current_player_name(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	#[test]
+	fn test_find_player_damage() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x48,
+			0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9, 0x00,
+		];
+
+		if let Err(e) = find_player_damage(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	#[test]
+	fn test_find_monster() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xB2, 0x01, 0xE8, 0x00, 0x00, 0x00,
+			0x00, 0xC6, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x0D, 0x00,
+		];
+
+		if let Err(e) = find_monster(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	#[test]
+	fn test_find_player_buff() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x05, 0x00, 0x00, 0x00, 0x00, 0x41, 0x8B, 0x94, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x89, 0x57, 0x00,
+		];
+
+		if let Err(e) = find_player_buff(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	#[test]
+	fn test_find_lobby_status() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x48,
+			0x8B, 0x4E, 0x00, 0xF3, 0x0F, 0x10, 0x86, 0x00, 0x00, 0x00, 0x00, 0xF3, 0x0F, 0x58,
+			0x86, 0x00, 0x00, 0x00, 0x00, 0xF3, 0x0F, 0x11, 0x86, 0x00, 0x00, 0x00, 0x00, 0xE8,
+			0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x4E, 0x00,
+		];
+
+		if let Err(e) = find_lobby_status(&data) {
+			panic!("error: {}", e);
+		}
+	}
+
+	// TODO: emetta is currently broken
+	// #[test]
+	// fn test_find_emetta() {
+	// let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
+	//
+	// if let Err(e) = find_emetta(&data) {
+	// panic!("error: {}", e);
+	// }
+	// }
+
+	#[test]
+	fn test_find_player_name_linux() {
+		let data = vec![
+			0x00, 0x48, 0x8B, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x54, 0x24, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B,
+			0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3, 0x00,
+		];
+
+		if let Err(e) = find_player_name_linux(&data) {
+			panic!("error: {}", e);
+		}
+	}
 }
