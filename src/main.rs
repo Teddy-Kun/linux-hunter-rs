@@ -86,10 +86,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	if conf.debug {
-		println!("found {} regions", regions.len());
-	}
-
 	let mut pattern_getters = [
 		PatternGetter::new(PatternType::PlayerName, find_player_name),
 		PatternGetter::new(PatternType::CurrentPlayerName, find_current_player_name),
@@ -101,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		PatternGetter::new(PatternType::LobbyStatus, find_lobby_status),
 	];
 
-	// all regions that contain a pattern are inserted here
+	// the indexes of all regions that contain a pattern are inserted here
 	let mut region_set = HashSet::new();
 
 	for get_pattern in &mut pattern_getters {
@@ -110,12 +106,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			if get_pattern.search(&region.data).is_ok() {
 				region_set.insert(i);
 				get_pattern.index = Some(i);
+
 				if conf.debug {
 					println!(
-						"found pattern '{:?}' in region {}",
+						"found pattern '{:X?}' in region {:X}",
 						get_pattern.pattern_type, i
 					);
 				}
+
 				break;
 			}
 		}
@@ -167,10 +165,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
-	if conf.debug {
-		return Ok(());
-	}
-
 	// only use the regions that contain a pattern
 	let mut region_map: HashMap<usize, MemoryRegion> =
 		HashMap::with_capacity(region_set.capacity());
@@ -182,9 +176,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// drop unused regions
 	drop(regions);
 
-	let mut terminal = ratatui::init();
-	App::new(mhw_pid, &conf, region_map, pattern_getters).run(&mut terminal)?;
-	ratatui::restore();
+	let mut app = App::new(mhw_pid, &conf, region_map, pattern_getters);
+	if conf.debug {
+		loop {
+			app.main_update_loop();
+			sleep(Duration::from_secs(1));
+			println!("############################################");
+			println!();
+		}
+	} else {
+		let mut terminal = ratatui::init();
+		app.run(&mut terminal)?;
+		ratatui::restore();
+	}
 
 	Ok(())
 }

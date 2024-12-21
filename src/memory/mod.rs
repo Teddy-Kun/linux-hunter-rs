@@ -1,10 +1,11 @@
+pub mod pattern;
+pub mod region;
+pub mod update;
+
 use nix::unistd::Pid;
 use region::MemoryRegion;
 use sscanf::scanf;
 use std::{collections::HashMap, fs};
-
-pub mod pattern;
-pub mod region;
 
 pub fn get_memory_regions(
 	pid: Pid,

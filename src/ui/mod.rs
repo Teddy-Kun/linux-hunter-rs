@@ -4,7 +4,7 @@ mod player;
 use crate::conf::Config;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::{
-	memory::{region::MemoryRegion, update_regions},
+	memory::{pattern::PatternGetter, region::MemoryRegion, update::update_all, update_regions},
 	mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo},
 };
 use monster::Monster;
@@ -30,17 +30,30 @@ pub struct App<'a> {
 	conf: &'a Config,
 	regions: HashMap<usize, MemoryRegion>,
 	data: FullData,
+	patterns: Vec<PatternGetter>,
 	frametime: u128,
 }
 
 impl<'a> App<'a> {
-	pub fn new(mhw_pid: Pid, conf: &'a Config, regions: HashMap<usize, MemoryRegion>) -> Self {
+	pub fn new(
+		mhw_pid: Pid,
+		conf: &'a Config,
+		regions: HashMap<usize, MemoryRegion>,
+		pattern_getters: [PatternGetter; 8],
+	) -> Self {
+		// only get patterns that were actually found and can be used
+		let patterns = pattern_getters
+			.into_iter()
+			.filter(|p| p.index.is_some())
+			.collect();
+
 		Self {
 			conf,
 			mhw_pid,
 			exit: false,
 			data: FullData::default(),
 			regions,
+			patterns,
 			frametime: 0,
 		}
 	}
@@ -70,21 +83,23 @@ impl<'a> App<'a> {
 		];
 
 		while !self.exit {
-			let now = Instant::now();
+			self.main_update_loop();
 
-			self.data.monsters[0].as_mut().unwrap().hp -= 100;
-
-			// ignore the error for now
-			let _ = update_regions(self.mhw_pid, &mut self.regions);
-
-			if self.conf.show_frametime {
-				self.frametime = now.elapsed().as_millis();
-			}
-
-			terminal.draw(|frame| self.draw(frame))?;
+			terminal.draw(|frame: &mut Frame<'_>| self.draw(frame))?;
 			self.handle_events()?;
 		}
 		Ok(())
+	}
+
+	pub fn main_update_loop(&mut self) {
+		let now = Instant::now();
+
+		// ignore the error for now
+		let _ = update_regions(self.mhw_pid, &mut self.regions);
+
+		update_all(&self.patterns, &self.regions);
+
+		self.frametime = now.elapsed().as_millis();
 	}
 
 	fn draw(&self, frame: &mut Frame) {

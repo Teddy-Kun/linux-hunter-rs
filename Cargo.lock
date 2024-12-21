@@ -456,6 +456,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ctrlc",
+ "lazy_static",
  "memchr",
  "nix",
  "nom",

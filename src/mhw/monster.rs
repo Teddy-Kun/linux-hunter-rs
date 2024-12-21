@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use lazy_static::lazy_static;
+
 #[derive(Debug)]
 pub enum CrownType {
 	Undefined,
@@ -59,7 +63,7 @@ pub struct MonsterData<'a> {
 	pub name: &'a str,
 }
 
-pub const MONSTERS: [MonsterData; 71] = [
+const MONSTERS: [MonsterData; 71] = [
 	MonsterData {
 		str_id: "em001_00",
 		id: 9,
@@ -558,3 +562,13 @@ pub const MONSTERS: [MonsterData; 71] = [
 		name: "Fatalis",
 	},
 ];
+
+lazy_static! {
+	pub static ref MONSTER_MAP: HashMap<u32, &'static MonsterData<'static>> = {
+		let mut map = HashMap::new();
+		for monster in MONSTERS.iter() {
+			map.insert(monster.id, monster);
+		}
+		map
+	};
+}
