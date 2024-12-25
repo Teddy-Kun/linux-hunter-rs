@@ -17,6 +17,7 @@ pub struct MemoryRegion {
 	pub data: Vec<u8>,
 	pub data_sz: usize,
 	pub dirty: bool,
+	pub from_vec: bool,
 }
 
 impl MemoryRegion {
@@ -28,6 +29,21 @@ impl MemoryRegion {
 			data: vec![0u8; end - begin],
 			data_sz: (end - begin),
 			dirty: true,
+			from_vec: false,
+		}
+	}
+
+	pub fn from_vec(data: Vec<u8>, debug_name: &str, debug_info: &str) -> Self {
+		let data_sz = data.len();
+
+		MemoryRegion {
+			begin: 0,
+			debug_name: debug_name.to_string(),
+			debug_info: debug_info.to_string(),
+			data,
+			data_sz,
+			dirty: false,
+			from_vec: true,
 		}
 	}
 
@@ -56,6 +72,10 @@ impl MemoryRegion {
 		pid: Pid,
 		dump_mem: Option<String>,
 	) -> Result<(), Box<dyn std::error::Error>> {
+		if self.from_vec {
+			return Ok(());
+		}
+
 		let local = IoSliceMut::new(&mut self.data);
 		let remote = RemoteIoVec {
 			base: self.begin,

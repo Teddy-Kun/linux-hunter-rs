@@ -39,8 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let conf = get_config()?;
 
-	let mhw_pid;
-	if conf.mhw_pid.is_none() {
+	let mut mhw_pid = Pid::from_raw(0);
+	if conf.mhw_pid.is_none() && conf.load_dump.is_none() {
 		println!("Trying to detect MHW PID");
 		let mut attempts = 0;
 		loop {
@@ -64,13 +64,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	} else {
 		match conf.mhw_pid {
 			Some(pid) => mhw_pid = Pid::from_raw(pid),
-			None => todo!("conf load"),
+			None => {
+				if conf.load_dump.is_none() {
+					return Err(Error::new("No MHW PID or dump path given").into());
+				}
+			}
 		}
 	}
 
 	println!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid, conf.debug)?;
+	let mut regions = get_memory_regions(mhw_pid, conf.debug, &conf.load_dump)?;
 	verify_regions(&regions)?;
 
 	if conf.dump_mem.is_some() {

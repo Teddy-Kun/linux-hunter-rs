@@ -19,12 +19,6 @@ pub struct Config {
 
 	#[arg(
 		long,
-		help = "Don't access MH:W memory directly and dynamically, use a local copy via buffers - increase CPU usage (both u and s) at the advantage of potentially slightly less inconsistencies"
-	)]
-	pub no_direct_mem: bool,
-
-	#[arg(
-		long,
 		help = "Specifies which pid to scan memory for (usually main MH:W). When not specified, linux-hunter-rs will try to find it automatically"
 	)]
 	pub mhw_pid: Option<i32>,
@@ -42,6 +36,9 @@ pub struct Config {
 	)]
 	pub dump_mem: Option<String>,
 
+	#[arg(long, help = "Loads a previously dumped memory dump")]
+	pub load_dump: Option<String>,
+
 	#[arg(long, help = "Shows how long it took to construct a frame in the tui")]
 	pub show_frametime: bool,
 
@@ -51,10 +48,6 @@ pub struct Config {
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
 	let conf = Config::parse();
-
-	if conf.no_direct_mem {
-		todo!("no_direct_mem");
-	}
 
 	Ok(conf)
 }
