@@ -155,9 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	if pattern_getters[PLAYER_NAME_LINUX].offset.is_none()
-		|| pattern_getters[PLAYER_DAMAGE].offset.is_none()
-	{
+	if pattern_getters[PLAYER_NAME_LINUX].offset.is_none() {
 		return Err(Error::new("Can't find AoB for patterns::PlayerNameLinux").into());
 	}
 
