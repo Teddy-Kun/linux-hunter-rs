@@ -9,16 +9,20 @@ use super::{
 
 #[derive(Debug)]
 struct SessionInfo {
-	session_id: String,
-	hostname: String,
-	is_mission: bool,
-	is_expedition: bool,
+	pub session_id: String,
+	pub hostname: String,
+	pub is_mission: bool,
+	pub is_expedition: bool,
 }
 
 fn get_session_data(
 	pid: Pid,
-	pattern: &PatternGetter,
+	patterns: &[PatternGetter],
 ) -> Result<SessionInfo, Box<dyn std::error::Error>> {
+	// TODO: only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls
+
+	let pattern = &patterns[PatternType::LobbyStatus as usize];
+
 	let mut info = SessionInfo {
 		session_id: String::new(),
 		hostname: String::new(),
@@ -62,7 +66,16 @@ fn get_session_data(
 	Ok(info)
 }
 
-fn get_monster_data(pid: Pid, pattern: &PatternGetter) -> Result<(), Box<dyn std::error::Error>> {
+fn get_damage(pid: Pid, patterns: &[PatternGetter]) -> Result<(), Box<dyn std::error::Error>> {
+	Err("not implemented".into())
+}
+
+fn get_monster_data(
+	pid: Pid,
+	patterns: &[PatternGetter],
+) -> Result<(), Box<dyn std::error::Error>> {
+	let pattern = &patterns[PatternType::Monsters as usize];
+
 	let start = pattern.index.unwrap() + pattern.offset.unwrap();
 	let mem = read_memory(pid, start, 256)?;
 
@@ -72,9 +85,14 @@ fn get_monster_data(pid: Pid, pattern: &PatternGetter) -> Result<(), Box<dyn std
 }
 
 pub fn update_all(pid: Pid, patterns: &[PatternGetter]) -> Result<(), Box<dyn std::error::Error>> {
-	let lobby_pattern = &patterns[PatternType::LobbyStatus as usize];
-	let lobby_data = get_session_data(pid, lobby_pattern)?;
+	let lobby_data = get_session_data(pid, patterns)?;
 	println!("session info: {:#?}", lobby_data);
+
+	if lobby_data.is_expedition || lobby_data.is_mission {
+		get_damage(pid, patterns).unwrap()
+	}
+
+	get_monster_data(pid, patterns).unwrap();
 
 	panic!("not implemented");
 
