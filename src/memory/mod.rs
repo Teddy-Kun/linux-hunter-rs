@@ -5,7 +5,7 @@ pub mod update;
 use nix::unistd::Pid;
 use region::MemoryRegion;
 use sscanf::scanf;
-use std::{collections::HashMap, fs};
+use std::fs;
 
 pub fn get_memory_regions(
 	pid: Pid,
@@ -49,25 +49,6 @@ pub fn get_memory_regions(
 	}
 
 	Ok(regions)
-}
-
-pub fn update_regions(
-	pid: Pid,
-	regions: &mut HashMap<usize, MemoryRegion>,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let mut err: Option<Box<dyn std::error::Error>> = None;
-
-	// return an error, if a region failed to update, but keep going
-	for (_, region) in regions.iter_mut() {
-		if let Err(e) = region.fill_data(pid, None) {
-			err = Some(e);
-		}
-	}
-
-	match err {
-		Some(e) => return Err(e),
-		None => Ok(()),
-	}
 }
 
 fn load_dump(path: &str) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {

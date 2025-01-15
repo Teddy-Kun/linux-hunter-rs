@@ -4,7 +4,7 @@ mod player;
 use crate::conf::Config;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::{
-	memory::{pattern::PatternGetter, region::MemoryRegion, update::update_all, update_regions},
+	memory::{pattern::PatternGetter, update::update_all},
 	mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo},
 };
 use monster::Monster;
@@ -17,7 +17,6 @@ use ratatui::{
 	DefaultTerminal, Frame,
 };
 use std::{
-	collections::HashMap,
 	io,
 	time::{Duration, Instant},
 };
@@ -25,22 +24,15 @@ use std::{
 #[derive(Debug)]
 pub struct App<'a> {
 	exit: bool,
-
 	mhw_pid: Pid,
 	conf: &'a Config,
-	regions: HashMap<usize, MemoryRegion>,
 	data: FullData,
 	patterns: Vec<PatternGetter>,
 	frametime: u128,
 }
 
 impl<'a> App<'a> {
-	pub fn new(
-		mhw_pid: Pid,
-		conf: &'a Config,
-		regions: HashMap<usize, MemoryRegion>,
-		pattern_getters: [PatternGetter; 8],
-	) -> Self {
+	pub fn new(mhw_pid: Pid, conf: &'a Config, pattern_getters: [PatternGetter; 8]) -> Self {
 		// only get patterns that were actually found and can be used
 		let patterns = pattern_getters
 			.into_iter()
@@ -52,7 +44,6 @@ impl<'a> App<'a> {
 			mhw_pid,
 			exit: false,
 			data: FullData::default(),
-			regions,
 			patterns,
 			frametime: 0,
 		}
@@ -94,10 +85,7 @@ impl<'a> App<'a> {
 	pub fn main_update_loop(&mut self) {
 		let now = Instant::now();
 
-		// ignore the error for now
-		let _ = update_regions(self.mhw_pid, &mut self.regions);
-
-		update_all(&self.patterns, &self.regions);
+		let _ = update_all(self.mhw_pid, &self.patterns);
 
 		self.frametime = now.elapsed().as_millis();
 	}

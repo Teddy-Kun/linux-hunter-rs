@@ -11,13 +11,12 @@ use linux_hunter_lib::{
 			find_player_buff, find_player_damage, find_player_name, find_player_name_linux,
 			PatternGetter, PatternType,
 		},
-		region::{verify_regions, MemoryRegion},
+		region::verify_regions,
 	},
 	mhw::find_mhw_pid,
 };
 use nix::unistd::Pid;
 use std::{
-	collections::{HashMap, HashSet},
 	fs::{create_dir, remove_dir_all},
 	thread::sleep,
 	time::Duration,
@@ -101,14 +100,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		PatternGetter::new(PatternType::LobbyStatus, find_lobby_status),
 	];
 
-	// the indexes of all regions that contain a pattern are inserted here
-	let mut region_set = HashSet::new();
-
 	for get_pattern in &mut pattern_getters {
 		for (i, region) in regions.iter().enumerate() {
 			let get_pattern = &mut *get_pattern;
 			if get_pattern.search(&region.data).is_ok() {
-				region_set.insert(i);
 				get_pattern.index = Some(i);
 
 				if conf.debug {
@@ -145,14 +140,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				pg.index
 			);
 		}
-
-		println!("Using {} regions", region_set.len());
-		for i in &region_set {
-			println!(
-				"\t{} ({}b): {}",
-				i, regions[*i].data_sz, regions[*i].debug_info
-			);
-		}
 	}
 
 	if pattern_getters[PLAYER_NAME_LINUX].offset.is_none() {
@@ -167,18 +154,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		return Err(Error::new("Can't find AoB for patterns::Monster").into());
 	}
 
-	// only use the regions that contain a pattern
-	let mut region_map: HashMap<usize, MemoryRegion> =
-		HashMap::with_capacity(region_set.capacity());
-	for i in region_set {
-		let r = &regions[i];
-		region_map.insert(i, r.clone());
-	}
-
-	// drop unused regions
+	// drop the ~3gb of memory regions, since we will use direct memory access to get the data
 	drop(regions);
 
-	let mut app = App::new(mhw_pid, &conf, region_map, pattern_getters);
+	let mut app = App::new(mhw_pid, &conf, pattern_getters);
 	if conf.debug {
 		loop {
 			app.main_update_loop();
