@@ -57,7 +57,7 @@ pub fn get_search_index(
 	input: &[u8],
 ) -> Result<usize, Box<dyn std::error::Error>> {
 	let mut i;
-	match memchr::memchr(first_three_bytes[0], &input) {
+	match memchr::memchr(first_three_bytes[0], input) {
 		Some(pos) => i = pos,
 		None => return Err(Error::new("pattern not found").into()),
 	};
