@@ -26,7 +26,7 @@ impl MemoryRegion {
 			begin,
 			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
-			data: vec![0u8; end - begin],
+			data: vec![],
 			data_sz: (end - begin),
 			dirty: true,
 			from_vec: false,
@@ -76,25 +76,13 @@ impl MemoryRegion {
 			return Ok(());
 		}
 
-		let local = IoSliceMut::new(&mut self.data);
-		let remote = RemoteIoVec {
-			base: self.begin,
-			len: self.data_sz,
-		};
-
-		let read_size = process_vm_readv(pid, &mut [local], &[remote])?;
-
-		if read_size != self.data_sz {
-			self.dirty = true;
-
-			return Err(Error::new(&format!(
-				"Read {} bytes instead of {}",
-				read_size, self.data_sz
-			))
-			.into());
+		match read_memory(pid, self.begin, self.data_sz) {
+			Ok(data) => self.data = data,
+			Err(e) => {
+				self.dirty = true;
+				return Err(e);
+			}
 		}
-
-		self.dirty = false;
 
 		if let Some(path) = dump_mem {
 			if let Err(e) = self.dump_mem(&path) {
@@ -104,6 +92,28 @@ impl MemoryRegion {
 
 		Ok(())
 	}
+}
+
+pub fn read_memory(
+	pid: Pid,
+	start: usize,
+	length: usize,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+	let mut buf = vec![0u8; length];
+
+	let local = IoSliceMut::new(&mut buf);
+	let remote = RemoteIoVec {
+		base: start,
+		len: length,
+	};
+
+	let read_size = process_vm_readv(pid, &mut [local], &[remote])?;
+
+	if read_size != length {
+		return Err(Error::new(&format!("Read {} bytes instead of {}", read_size, length)).into());
+	}
+
+	Ok(buf)
 }
 
 pub fn verify_regions(regions: &[MemoryRegion]) -> Result<(), Box<dyn std::error::Error>> {
