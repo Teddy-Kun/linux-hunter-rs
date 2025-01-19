@@ -111,7 +111,7 @@ macro_rules! read_mem_to_type {
 		let ptr_loc: Box<[u8]> = read_memory($pid, $start, 4)?;
 
 		use tracing::debug;
-		debug!("{:02X?}", ptr_loc);
+		debug!("ptr_loc: {:02X?}", ptr_loc);
 
 		let ptr_ptr: *mut [u8; 4] = Box::into_raw(ptr_loc) as *mut [u8; 4];
 		// Create a slice from the pointer and interpret it as type T

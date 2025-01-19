@@ -101,11 +101,9 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 
 	for get_pattern in &mut pattern_getters {
 		for (i, region) in regions.iter().enumerate() {
-			if let Some(data) = &region.data {
+			if region.data.is_some() {
 				let get_pattern = &mut *get_pattern;
-				if get_pattern.search(data).is_ok() {
-					get_pattern.mem_start = Some(region.get_begin());
-
+				if get_pattern.search(region).is_ok() {
 					debug!(
 						"found pattern '{:X?}' in region {:X}",
 						get_pattern.pattern_type, i
@@ -117,7 +115,7 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	if conf.debug {
+	if conf.debug() {
 		debug!("took {}ms", start.elapsed().as_millis());
 
 		let sys = System::new_all();
@@ -129,27 +127,26 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("Done");
 
-	if conf.debug {
+	if conf.debug() {
 		for pg in &pattern_getters {
 			debug!(
-				"{:?}:\n Found: {}\n Offset: {:?}\n Index: {:?}\n",
+				"{:?}:\n Found: {}\n MemoryLocation: {:?}",
 				pg.pattern_type,
-				pg.offset.is_some(),
-				pg.offset,
-				pg.mem_start
+				pg.mem_location.is_some(),
+				pg.mem_location
 			);
 		}
 	}
 
-	if pattern_getters[PLAYER_NAME_LINUX].offset.is_none() {
+	if pattern_getters[PLAYER_NAME_LINUX].mem_location.is_none() {
 		return Err("Can't find AoB for patterns::PlayerNameLinux".into());
 	}
 
-	if pattern_getters[PLAYER_DAMAGE].offset.is_none() {
+	if pattern_getters[PLAYER_DAMAGE].mem_location.is_none() {
 		return Err("Can't find AoB for patterns::PlayerDamage".into());
 	}
 
-	if conf.show_monsters && pattern_getters[MONSTER].offset.is_none() {
+	if conf.show_monsters && pattern_getters[MONSTER].mem_location.is_none() {
 		return Err("Can't find AoB for patterns::Monster".into());
 	}
 
@@ -157,7 +154,7 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 	drop(regions);
 
 	let mut app = App::new(mhw_pid, &conf, pattern_getters);
-	if conf.debug {
+	if conf.debug() {
 		loop {
 			app.main_update_loop();
 			sleep(Duration::from_secs(1));

@@ -50,15 +50,16 @@ pub struct Config {
 		default_value = "info"
 	)]
 	pub log_level: Level,
-	pub debug: bool,
+}
+
+impl Config {
+	pub fn debug(&self) -> bool {
+		self.log_level > Level::INFO
+	}
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
-	let mut conf = Config::parse();
-
-	if conf.log_level > Level::INFO {
-		conf.debug = true;
-	}
+	let conf = Config::parse();
 
 	Ok(conf)
 }

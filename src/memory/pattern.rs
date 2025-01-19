@@ -3,6 +3,8 @@ use nom::{
 	sequence::tuple,
 };
 
+use super::region::MemoryRegion;
+
 pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
 
 #[derive(Debug)]
@@ -17,10 +19,21 @@ pub enum PatternType {
 	PlayerNameLinux,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryLocation {
+	pub start: usize,  // start of the memory region where the pattern was found
+	pub offset: usize, // offset of where it was found, relative to the start of the region
+}
+
+impl MemoryLocation {
+	pub fn get_addr(&self) -> usize {
+		self.start + self.offset
+	}
+}
+
 #[derive(Debug)]
 pub struct PatternGetter {
-	pub mem_start: Option<usize>, // start of the memory region where the pattern was found - has to be set from outside
-	pub offset: Option<usize>,    // offset of where it was found, relative to the start of the region
+	pub mem_location: Option<MemoryLocation>,
 	pub pattern_type: PatternType,
 	find_func: fn(&[u8]) -> MemSearchResult,
 }
@@ -30,19 +43,26 @@ impl PatternGetter {
 		PatternGetter {
 			pattern_type,
 			find_func,
-			offset: None,
-			mem_start: None,
+			mem_location: None,
 		}
 	}
 
-	pub fn search(&mut self, input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-		match (self.find_func)(input) {
+	pub fn search(&mut self, mem_region: &MemoryRegion) -> Result<(), Box<dyn std::error::Error>> {
+		let data = match &mem_region.data {
+			Some(data) => data,
+			None => return Err("Memory region has no data".into()),
+		};
+
+		match (self.find_func)(data) {
 			Ok(res) => {
-				self.offset = Some(res);
+				let loc = MemoryLocation {
+					start: mem_region.get_begin(),
+					offset: res,
+				};
+				self.mem_location = Some(loc);
 			}
 			Err(e) => {
-				self.mem_start = None;
-				self.offset = None;
+				self.mem_location = None;
 				return Err(e);
 			}
 		};

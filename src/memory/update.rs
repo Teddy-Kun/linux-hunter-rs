@@ -1,7 +1,7 @@
 use std::str;
 
 use nix::unistd::Pid;
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 use crate::{
 	mhw::{
@@ -31,17 +31,13 @@ fn get_session_data(
 		is_expedition: false,
 	};
 
-	if pattern.mem_start.is_none() || pattern.offset.is_none() {
+	if pattern.mem_location.is_none() {
 		return Ok(info);
 	}
+	let start = pattern.mem_location.unwrap().get_addr();
+	let pointer = read_mem_to_type!(pid, start, usize);
 
-	debug!(
-		"first bytes: {:0X?}",
-		read_memory(pid, pattern.mem_start.unwrap(), 4)?
-	);
-
-	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
-	let pointer = read_mem_to_type!(pid, start, u32) as usize;
+	trace!("pointer: {}", pointer);
 
 	let mem = read_memory(
 		pid,
@@ -60,7 +56,7 @@ fn get_session_data(
 	info.hostname = unsafe { str::from_boxed_utf8_unchecked(mem) };
 
 	// TODO: not working, find out why and fix this
-	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
+	let start = pattern.mem_location.unwrap().get_addr();
 	let pointer = read_mem_to_type!(pid, start, u64) as usize;
 	let mem = read_memory(pid, pointer + start + offsets::MISSION_STATUS_OFFSET, 1)?;
 	info.is_mission = mem[0] != 0;
@@ -76,6 +72,7 @@ fn get_damage(
 	pid: Pid,
 	patterns: &[PatternGetter],
 ) -> Result<Box<[PlayerInfo]>, Box<dyn std::error::Error>> {
+	trace!("pid: {}, patterns: {:#?}", pid, patterns);
 	Err("not implemented".into())
 }
 
@@ -85,10 +82,12 @@ fn get_monster_data(
 ) -> Result<Box<[MonsterInfo]>, Box<dyn std::error::Error>> {
 	let pattern = &patterns[PatternType::Monsters as usize];
 
-	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
+	let start = pattern.mem_location.unwrap().get_addr();
 	let mem = read_memory(pid, start, 256)?;
 
 	debug!("{:02X?}", mem);
+
+	get_single_monster()?;
 
 	Err("not implemented".into())
 }

@@ -37,7 +37,7 @@ impl<'a> App<'a> {
 		// only get patterns that were actually found and can be used
 		let patterns = pattern_getters
 			.into_iter()
-			.filter(|p| p.mem_start.is_some())
+			.filter(|p| p.mem_location.is_some())
 			.collect();
 
 		Self {
