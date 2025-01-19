@@ -102,18 +102,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	for get_pattern in &mut pattern_getters {
 		for (i, region) in regions.iter().enumerate() {
-			let get_pattern = &mut *get_pattern;
-			if get_pattern.search(&region.data).is_ok() {
-				get_pattern.index = Some(i);
+			if let Some(data) = &region.data {
+				let get_pattern = &mut *get_pattern;
+				if get_pattern.search(data).is_ok() {
+					get_pattern.index = Some(i);
 
-				if conf.debug {
-					println!(
-						"found pattern '{:X?}' in region {:X}",
-						get_pattern.pattern_type, i
-					);
+					if conf.debug {
+						println!(
+							"found pattern '{:X?}' in region {:X}",
+							get_pattern.pattern_type, i
+						);
+					}
+
+					break;
 				}
-
-				break;
 			}
 		}
 	}

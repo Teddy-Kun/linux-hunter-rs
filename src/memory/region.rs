@@ -12,11 +12,10 @@ use crate::err::Error;
 #[derive(Debug, Clone)]
 pub struct MemoryRegion {
 	begin: usize,
+	end: usize,
 	pub debug_name: String,
 	pub debug_info: String,
-	pub data: Box<[u8]>,
-	pub data_sz: usize,
-	pub dirty: bool,
+	pub data: Option<Box<[u8]>>,
 	pub from_vec: bool,
 }
 
@@ -24,25 +23,21 @@ impl MemoryRegion {
 	pub fn new(begin: usize, end: usize, debug_name: &str, debug_info: &str) -> Self {
 		MemoryRegion {
 			begin,
+			end,
 			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
-			data: Box::new([]),
-			data_sz: (end - begin),
-			dirty: true,
+			data: None,
 			from_vec: false,
 		}
 	}
 
 	pub fn from_vec(data: Vec<u8>, debug_name: &str, debug_info: &str) -> Self {
-		let data_sz = data.len();
-
 		MemoryRegion {
 			begin: 0,
+			end: data.len(),
 			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
-			data: data.into_boxed_slice(),
-			data_sz,
-			dirty: false,
+			data: Some(data.into_boxed_slice()),
 			from_vec: true,
 		}
 	}
@@ -52,11 +47,13 @@ impl MemoryRegion {
 	}
 
 	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-		let path = path.to_string() + "/" + self.debug_name.as_str() + ".bin";
-		let mut file = File::create(path)?;
+		if let Some(data) = &self.data {
+			let path = path.to_string() + "/" + self.debug_name.as_str() + ".bin";
+			let mut file = File::create(path)?;
 
-		file.write_all(&self.data)?;
-		file.flush()?;
+			file.write_all(data)?;
+			file.flush()?;
+		}
 
 		Ok(())
 	}
@@ -70,10 +67,9 @@ impl MemoryRegion {
 			return Ok(());
 		}
 
-		match read_memory(pid, self.begin, self.data_sz) {
-			Ok(data) => self.data = data.into_boxed_slice(),
+		match read_memory(pid, self.begin, self.end - self.begin) {
+			Ok(data) => self.data = Some(data.into_boxed_slice()),
 			Err(e) => {
-				self.dirty = true;
 				return Err(e);
 			}
 		}
