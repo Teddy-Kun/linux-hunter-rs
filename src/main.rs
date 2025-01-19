@@ -22,7 +22,7 @@ use std::{
 	time::Duration,
 };
 use sysinfo::System;
-use tracing::{debug, error, info, warn, Level};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::FmtSubscriber;
 use ui::App;
 
@@ -182,12 +182,9 @@ fn main() {
 		}
 	};
 
-	let filter = if conf.debug {
-		Level::TRACE
-	} else {
-		Level::INFO
-	};
-	let subscriber = FmtSubscriber::builder().with_max_level(filter).finish();
+	let subscriber = FmtSubscriber::builder()
+		.with_max_level(conf.log_level)
+		.finish();
 	if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
 		eprintln!("Failed to set global default subscriber: {}", e);
 		eprintln!("You wont get any logs!");

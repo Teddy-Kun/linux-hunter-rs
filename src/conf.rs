@@ -1,4 +1,5 @@
 use clap::Parser;
+use tracing::Level;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -42,12 +43,22 @@ pub struct Config {
 	#[arg(long, help = "Shows how long it took to construct a frame in the tui")]
 	pub show_frametime: bool,
 
-	#[arg(short, long, help = "Enables some debug logs")]
+	#[arg(
+		short,
+		long,
+		help = "Manually set the log level (trace, debug, info, warn, error).",
+		default_value = "info"
+	)]
+	pub log_level: Level,
 	pub debug: bool,
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
-	let conf = Config::parse();
+	let mut conf = Config::parse();
+
+	if conf.log_level > Level::INFO {
+		conf.debug = true;
+	}
 
 	Ok(conf)
 }

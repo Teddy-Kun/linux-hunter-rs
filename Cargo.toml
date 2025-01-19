@@ -5,7 +5,6 @@ edition = "2021"
 
 [lib]
 name = "linux_hunter_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 clap = { version = "4.5.26", features = ["derive", "string"] }
