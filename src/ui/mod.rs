@@ -52,13 +52,13 @@ impl<'a> App<'a> {
 	/// runs the application's main loop until the user quits
 	pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
 		self.data.players = Box::new([PlayerInfo {
-			name: "Player 1".to_string(),
+			name: Box::from("Player 1"),
 			damage: 2500,
 			left_session: false,
 		}]);
 
 		self.data.monsters = Box::new([MonsterInfo {
-			name: "Rathalos".to_string(),
+			name: Box::from("Rathalos"),
 			crown: Some(Crown::Gold),
 			hp: 12586,
 			max_hp: 20600,

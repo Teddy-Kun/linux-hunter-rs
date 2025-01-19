@@ -19,8 +19,8 @@ fn get_session_data(
 	let pattern = &patterns[PatternType::LobbyStatus as usize];
 
 	let mut info = SessionInfo {
-		session_id: String::new(),
-		hostname: String::new(),
+		session_id: Box::from(""),
+		hostname: Box::from(""),
 		is_mission: true,
 		is_expedition: false,
 	};
@@ -38,14 +38,14 @@ fn get_session_data(
 		pointer + start + offsets::SESSION_ID,
 		offsets::ID_LENGTH,
 	)?;
-	info.session_id = String::from_utf8(mem)?;
+	info.session_id = String::from_utf8(mem)?.into_boxed_str();
 
 	let mem = read_memory(
 		pid,
 		pointer + start + offsets::SESSION_HOST_NAME,
 		offsets::PLAYER_NAME_LENGTH,
 	)?;
-	info.hostname = String::from_utf8(mem)?;
+	info.hostname = String::from_utf8(mem)?.into_boxed_str();
 
 	// TODO: not working, find out why and fix this
 	let start = pattern.index.unwrap() + pattern.offset.unwrap();

@@ -19,7 +19,7 @@ impl Display for Crown {
 
 #[derive(Debug)]
 pub struct PlayerInfo {
-	pub name: String,
+	pub name: Box<str>,
 	pub damage: usize,
 	pub left_session: bool,
 }
@@ -32,7 +32,7 @@ impl PlayerInfo {
 
 #[derive(Debug)]
 pub struct MonsterInfo {
-	pub name: String,
+	pub name: Box<str>,
 	pub hp: u32,
 	pub max_hp: u32,
 	pub crown: Option<Crown>,
@@ -46,8 +46,8 @@ impl MonsterInfo {
 
 #[derive(Debug, Default)]
 pub struct SessionInfo {
-	pub session_id: String,
-	pub hostname: String,
+	pub session_id: Box<str>,
+	pub hostname: Box<str>,
 	pub is_mission: bool,
 	pub is_expedition: bool,
 }
