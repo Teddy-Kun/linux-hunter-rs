@@ -35,10 +35,10 @@ pub struct Config {
 		long,
 		help = "Dumps memory to a file in the dir specified upon initialization. WARNING: very slow, memory hungry AND DELTES ALL CONTENTS OF THAT DIRECTORY, but useful for debugging"
 	)]
-	pub dump_mem: Option<String>,
+	pub dump_mem: Option<Box<str>>,
 
 	#[arg(long, help = "Loads a previously dumped memory dump")]
-	pub load_dump: Option<String>,
+	pub load_dump: Option<Box<str>>,
 
 	#[arg(long, help = "Shows how long it took to construct a frame in the tui")]
 	pub show_frametime: bool,
@@ -50,6 +50,12 @@ pub struct Config {
 		default_value = "info"
 	)]
 	pub log_level: Level,
+
+	#[arg(
+		long,
+		help = "Sets the path to the log file. Defaults to ~/.cache/linux-hunter-rs.log"
+	)]
+	pub log_file: Option<Box<str>>,
 }
 
 impl Config {
@@ -59,7 +65,17 @@ impl Config {
 }
 
 pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
-	let conf = Config::parse();
+	let mut conf = Config::parse();
+
+	if conf.log_file.is_none() {
+		match dirs::cache_dir() {
+			None => eprintln!("Failed to get cache dir! Will not log to file."),
+			Some(mut dir) => {
+				dir.push("linux-hunter-rs.log");
+				conf.log_file = Some(Box::from(dir.to_str().unwrap()))
+			}
+		}
+	}
 
 	Ok(conf)
 }

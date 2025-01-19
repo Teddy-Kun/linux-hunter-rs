@@ -60,7 +60,7 @@ impl MemoryRegion {
 	pub fn fill_data(
 		&mut self,
 		pid: Pid,
-		dump_mem: Option<String>,
+		dump_mem: Option<Box<str>>,
 	) -> Result<(), Box<dyn std::error::Error>> {
 		if self.from_vec {
 			return Ok(());

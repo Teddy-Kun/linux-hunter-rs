@@ -1,8 +1,7 @@
-use std::str;
-
-use nix::unistd::Pid;
-use tracing::{debug, error, trace};
-
+use super::{
+	pattern::{PatternGetter, PatternType},
+	region::read_memory,
+};
 use crate::{
 	mhw::{
 		data::{GameData, MonsterInfo, PlayerInfo, SessionInfo},
@@ -10,60 +9,60 @@ use crate::{
 	},
 	read_mem_to_type,
 };
-
-use super::{
-	pattern::{PatternGetter, PatternType},
-	region::read_memory,
-};
+use nix::unistd::Pid;
+use std::str;
+use tracing::{debug, error, trace};
 
 fn get_session_data(
 	pid: Pid,
 	patterns: &[PatternGetter],
 ) -> Result<SessionInfo, Box<dyn std::error::Error>> {
-	// TODO: only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls?
+	// TODO: maybe only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls?
 
 	let pattern = &patterns[PatternType::LobbyStatus as usize];
 
-	let mut info = SessionInfo {
-		session_id: Box::from(""),
-		hostname: Box::from(""),
-		is_mission: true,
-		is_expedition: false,
-	};
+	let mut info = SessionInfo::default();
 
+	// if the mem_location is none, just return the default SessionInfo, so we can still attempt to check for players and monsters
 	if pattern.mem_location.is_none() {
 		return Ok(info);
 	}
-	let start = pattern.mem_location.unwrap().get_addr();
-	let pointer = read_mem_to_type!(pid, start, usize);
 
+	let start = pattern.mem_location.unwrap().get_addr();
+	trace!("start: {}", start);
+
+	let pointer = read_mem_to_type!(pid, start, usize);
 	trace!("pointer: {}", pointer);
 
 	let mem = read_memory(
 		pid,
 		pointer + start + offsets::SESSION_ID,
 		offsets::ID_LENGTH,
-	)?;
-	// since the game uses UTF-8 this is safe
+	)?; // Fails here ATM
+	 // since the game uses UTF-8 this should be safe
 	info.session_id = unsafe { str::from_boxed_utf8_unchecked(mem) };
+	trace!("Got session id");
 
 	let mem = read_memory(
 		pid,
 		pointer + start + offsets::SESSION_HOST_NAME,
 		offsets::PLAYER_NAME_LENGTH,
 	)?;
-	// since the game uses UTF-8 this is safe
+	// since the game uses UTF-8 this should be safe
 	info.hostname = unsafe { str::from_boxed_utf8_unchecked(mem) };
+	trace!("Got host name");
 
 	// TODO: not working, find out why and fix this
 	let start = pattern.mem_location.unwrap().get_addr();
 	let pointer = read_mem_to_type!(pid, start, u64) as usize;
 	let mem = read_memory(pid, pointer + start + offsets::MISSION_STATUS_OFFSET, 1)?;
 	info.is_mission = mem[0] != 0;
+	trace!("Got mission status");
 
 	// TODO: not working, find out why and fix this
 	let mem = read_memory(pid, pointer + start + offsets::EXPEDITION_STATUS_OFFSET, 1)?;
 	info.is_expedition = mem[0] != 0;
+	trace!("Got expedition status");
 
 	Ok(info)
 }

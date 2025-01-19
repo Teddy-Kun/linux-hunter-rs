@@ -44,12 +44,23 @@ impl MonsterInfo {
 	}
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SessionInfo {
 	pub session_id: Box<str>,
 	pub hostname: Box<str>,
 	pub is_mission: bool,
 	pub is_expedition: bool,
+}
+
+impl Default for SessionInfo {
+	fn default() -> Self {
+		Self {
+			session_id: Box::from(""),
+			hostname: Box::from(""),
+			is_mission: true, // set to true by default since this will make us scan for additional patterns in case this was not found
+			is_expedition: false,
+		}
+	}
 }
 
 #[derive(Debug, Default)]

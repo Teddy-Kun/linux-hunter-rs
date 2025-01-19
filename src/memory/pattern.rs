@@ -31,6 +31,17 @@ impl MemoryLocation {
 	}
 }
 
+impl ToString for MemoryLocation {
+	fn to_string(&self) -> String {
+		format!(
+			"start: 0x{:02X}; offset: {}; addr: {}",
+			self.start,
+			self.offset,
+			self.get_addr()
+		)
+	}
+}
+
 #[derive(Debug)]
 pub struct PatternGetter {
 	pub mem_location: Option<MemoryLocation>,

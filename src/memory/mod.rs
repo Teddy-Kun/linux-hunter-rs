@@ -10,12 +10,12 @@ use tracing::debug;
 
 pub fn get_memory_regions(
 	pid: Pid,
-	dump_loc: &Option<String>,
+	dump_loc: Option<Box<str>>,
 ) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
 	// dont load the games memory if we are supposed to load from a dump
 	// usefull for debugging
 	if let Some(path) = dump_loc {
-		return load_dump(path);
+		return load_dump(&path);
 	}
 
 	let maps_path = String::from("/proc/") + pid.to_string().as_str() + "/maps";

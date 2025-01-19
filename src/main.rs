@@ -16,7 +16,7 @@ use linux_hunter_lib::{
 };
 use nix::unistd::Pid;
 use std::{
-	fs::{create_dir, remove_dir_all},
+	fs::{create_dir, remove_dir_all, File},
 	io::{self, Write},
 	thread::sleep,
 	time::Duration,
@@ -72,14 +72,14 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 
 	info!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid, &conf.load_dump)?;
+	let mut regions = get_memory_regions(mhw_pid, conf.load_dump.clone())?;
 	verify_regions(&regions)?;
 
 	if conf.dump_mem.is_some() {
 		let path = conf.dump_mem.clone().unwrap();
 
-		remove_dir_all(&path)?;
-		create_dir(path)?;
+		remove_dir_all(&*path)?;
+		create_dir(&*path)?;
 	}
 
 	for region in &mut regions {
@@ -130,10 +130,13 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 	if conf.debug() {
 		for pg in &pattern_getters {
 			debug!(
-				"{:?}:\n Found: {}\n MemoryLocation: {:?}",
+				"\n{:?}:\n Found: {}\n MemoryLocation: {}",
 				pg.pattern_type,
 				pg.mem_location.is_some(),
-				pg.mem_location
+				match pg.mem_location {
+					Some(loc) => loc.to_string(),
+					None => "None".to_string(),
+				}
 			);
 		}
 	}
@@ -154,18 +157,9 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 	drop(regions);
 
 	let mut app = App::new(mhw_pid, &conf, pattern_getters);
-	if conf.debug() {
-		loop {
-			app.main_update_loop();
-			sleep(Duration::from_secs(1));
-			println!("############################################");
-			println!();
-		}
-	} else {
-		let mut terminal = ratatui::init();
-		app.run(&mut terminal)?;
-		ratatui::restore();
-	}
+	let mut terminal = ratatui::init();
+	app.run(&mut terminal)?;
+	ratatui::restore();
 
 	Ok(())
 }
@@ -179,12 +173,27 @@ fn main() {
 		}
 	};
 
-	let subscriber = FmtSubscriber::builder()
-		.with_max_level(conf.log_level)
-		.finish();
-	if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
-		eprintln!("Failed to set global default subscriber: {}", e);
-		eprintln!("You wont get any logs!");
+	let log_file = if let Some(ref path) = conf.log_file {
+		match File::create(&**path) {
+			Ok(f) => Some(f),
+			Err(e) => {
+				eprintln!("Failed to create log file: {}", e);
+				None
+			}
+		}
+	} else {
+		None
+	};
+
+	if let Some(log_file) = log_file {
+		let subscriber = FmtSubscriber::builder()
+			.with_max_level(conf.log_level)
+			.with_writer(log_file)
+			.finish();
+		if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
+			eprintln!("Failed to set global default subscriber: {}", e);
+			eprintln!("You wont get any logs!");
+		}
 	}
 
 	let mut exit_code = 0;
