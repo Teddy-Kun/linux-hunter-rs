@@ -29,7 +29,7 @@ pub struct App<'a> {
 	conf: &'a Config,
 	data: GameData,
 	patterns: Vec<PatternGetter>,
-	frametime: u128,
+	frametime: f64,
 }
 
 impl<'a> App<'a> {
@@ -46,7 +46,7 @@ impl<'a> App<'a> {
 			exit: false,
 			data: GameData::default(),
 			patterns,
-			frametime: 0,
+			frametime: 0.0,
 		}
 	}
 
@@ -69,6 +69,15 @@ impl<'a> App<'a> {
 			self.main_update_loop();
 
 			terminal.draw(|frame: &mut Frame<'_>| self.draw(frame))?;
+
+			if let Some(refresh) = self.conf.refresh {
+				if refresh > self.frametime {
+					std::thread::sleep(Duration::from_millis(
+						(refresh - self.frametime).round() as u64
+					));
+				}
+			}
+
 			self.handle_events()?;
 		}
 		Ok(())
@@ -82,7 +91,7 @@ impl<'a> App<'a> {
 			Err(e) => warn!("failed to update: {}", e),
 		}
 
-		self.frametime = now.elapsed().as_millis();
+		self.frametime = now.elapsed().as_millis() as f64;
 	}
 
 	fn draw(&self, frame: &mut Frame) {

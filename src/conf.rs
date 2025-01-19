@@ -27,9 +27,9 @@ pub struct Config {
 	#[arg(
 		short = 'r',
 		long,
-		help = "Specifies what is the UI/stats refresh interval in ms (default 1000)"
+		help = "Specifies what is the UI/stats refresh interval in ms. If unspecified it will try to refresh at 60 fps (16.66ms)"
 	)]
-	pub refresh: Option<u16>,
+	pub refresh: Option<f64>,
 
 	#[arg(
 		long,
