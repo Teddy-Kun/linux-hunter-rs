@@ -98,6 +98,7 @@ fn get_single_monster() -> Result<MonsterInfo, Box<dyn std::error::Error>> {
 pub fn update_all(
 	pid: Pid,
 	patterns: &[PatternGetter],
+	get_monsters: bool,
 ) -> Result<GameData, Box<dyn std::error::Error>> {
 	let mut data = GameData::new(get_session_data(pid, patterns)?);
 	debug!("session info: {:#?}", data.session);
@@ -108,9 +109,11 @@ pub fn update_all(
 			Err(e) => error!("failed to get player damage: {}", e),
 		}
 
-		match get_monster_data(pid, patterns) {
-			Ok(monsters) => data.monsters = monsters,
-			Err(e) => error!("failed to get monster data: {}", e),
+		if get_monsters {
+			match get_monster_data(pid, patterns) {
+				Ok(monsters) => data.monsters = monsters,
+				Err(e) => error!("failed to get monster data: {}", e),
+			}
 		}
 	}
 

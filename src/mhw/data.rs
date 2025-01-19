@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use super::monster::{MonsterData, MONSTER_MAP};
+
 #[derive(Debug, Clone, Copy)]
 pub enum Crown {
 	SmallGold,
@@ -32,15 +34,55 @@ impl PlayerInfo {
 
 #[derive(Debug)]
 pub struct MonsterInfo {
+	pub id: u32,
 	pub name: Box<str>,
 	pub hp: u32,
 	pub max_hp: u32,
+	pub size: f64,
 	pub crown: Option<Crown>,
 }
 
 impl MonsterInfo {
-	pub fn get_monster_info() -> Self {
-		todo!("get player info from bytes");
+	pub fn new(
+		id: u32,
+		hp: u32,
+		max_hp: u32,
+		size: f64,
+	) -> Result<Self, Box<dyn std::error::Error>> {
+		let monster_data = match MONSTER_MAP.get(&id) {
+			None => {
+				return Err(format!("unknown monster id: {}", id).into());
+			}
+			Some(data) => *data,
+		};
+		let crown = Self::calc_crown(size, monster_data);
+		Ok(Self {
+			id,
+			name: Box::from(MONSTER_MAP.get(&id).unwrap().name),
+			hp,
+			max_hp,
+			size,
+			crown,
+		})
+	}
+
+	fn calc_crown(size: f64, monster_data: &MonsterData) -> Option<Crown> {
+		let small_size = monster_data.base_size * monster_data.crown_data.small;
+		if size < small_size {
+			return Some(Crown::SmallGold);
+		}
+
+		let gold_size = monster_data.base_size * monster_data.crown_data.very_large;
+		if size >= gold_size {
+			return Some(Crown::Gold);
+		}
+
+		let silver_size = monster_data.base_size * monster_data.crown_data.large;
+		if size >= silver_size {
+			return Some(Crown::Silver);
+		}
+
+		None
 	}
 }
 

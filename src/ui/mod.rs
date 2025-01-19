@@ -5,7 +5,10 @@ use crate::conf::Config;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::{
 	memory::{pattern::PatternGetter, update::update_all},
-	mhw::data::{Crown, GameData, MonsterInfo, PlayerInfo},
+	mhw::{
+		data::{GameData, MonsterInfo, PlayerInfo},
+		monster::MONSTER_MAP,
+	},
 };
 use monster::Monster;
 use nix::unistd::Pid;
@@ -58,11 +61,14 @@ impl<'a> App<'a> {
 			left_session: false,
 		}]);
 
+		let rathalos = *MONSTER_MAP.get(&1).unwrap();
 		self.data.monsters = Box::new([MonsterInfo {
-			name: Box::from("Rathalos"),
-			crown: Some(Crown::Gold),
+			id: 1,
+			name: Box::from(rathalos.name),
+			crown: None,
 			hp: 12586,
 			max_hp: 20600,
+			size: rathalos.base_size,
 		}]);
 
 		while !self.exit {
@@ -86,7 +92,7 @@ impl<'a> App<'a> {
 	pub fn main_update_loop(&mut self) {
 		let now = Instant::now();
 
-		match update_all(self.mhw_pid, &self.patterns) {
+		match update_all(self.mhw_pid, &self.patterns, self.conf.show_monsters) {
 			Ok(data) => self.data = data,
 			Err(e) => warn!("failed to update: {}", e),
 		}
