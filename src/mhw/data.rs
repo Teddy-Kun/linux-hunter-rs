@@ -26,12 +26,6 @@ pub struct PlayerInfo {
 	pub left_session: bool,
 }
 
-impl PlayerInfo {
-	pub fn get_player_info() -> Self {
-		todo!("get player info from bytes");
-	}
-}
-
 #[derive(Debug)]
 pub struct MonsterInfo {
 	pub id: u32,
@@ -108,16 +102,15 @@ impl Default for SessionInfo {
 #[derive(Debug, Default)]
 pub struct GameData {
 	pub session: SessionInfo,
-	pub monsters: Box<[MonsterInfo]>,
 	pub players: Box<[PlayerInfo]>,
+	pub monsters: Box<[MonsterInfo]>,
 }
 
 impl GameData {
 	pub fn new(session: SessionInfo) -> Self {
 		Self {
 			session,
-			monsters: Box::new([]),
-			players: Box::new([]),
+			..Default::default()
 		}
 	}
 
