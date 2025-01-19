@@ -1,8 +1,13 @@
+use std::str;
+
 use nix::unistd::Pid;
 
-use crate::mhw::{
-	data::{GameData, MonsterInfo, PlayerInfo, SessionInfo},
-	offsets,
+use crate::{
+	mhw::{
+		data::{GameData, MonsterInfo, PlayerInfo, SessionInfo},
+		offsets,
+	},
+	read_mem_to_type,
 };
 
 use super::{
@@ -14,7 +19,7 @@ fn get_session_data(
 	pid: Pid,
 	patterns: &[PatternGetter],
 ) -> Result<SessionInfo, Box<dyn std::error::Error>> {
-	// TODO: only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls
+	// TODO: only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls?
 
 	let pattern = &patterns[PatternType::LobbyStatus as usize];
 
@@ -30,27 +35,27 @@ fn get_session_data(
 	}
 
 	let start = pattern.index.unwrap() + pattern.offset.unwrap();
-	let pointer: usize =
-		u32::from_ne_bytes(read_memory(pid, start, 4)?.try_into().unwrap()) as usize;
+	let pointer = read_mem_to_type!(pid, start, u32) as usize;
 
 	let mem = read_memory(
 		pid,
 		pointer + start + offsets::SESSION_ID,
 		offsets::ID_LENGTH,
 	)?;
-	info.session_id = String::from_utf8(mem)?.into_boxed_str();
+	// since the game uses UTF-8 this is safe
+	info.session_id = unsafe { str::from_boxed_utf8_unchecked(mem) };
 
 	let mem = read_memory(
 		pid,
 		pointer + start + offsets::SESSION_HOST_NAME,
 		offsets::PLAYER_NAME_LENGTH,
 	)?;
-	info.hostname = String::from_utf8(mem)?.into_boxed_str();
+	// since the game uses UTF-8 this is safe
+	info.hostname = unsafe { str::from_boxed_utf8_unchecked(mem) };
 
 	// TODO: not working, find out why and fix this
 	let start = pattern.index.unwrap() + pattern.offset.unwrap();
-	let pointer: usize =
-		u64::from_ne_bytes(read_memory(pid, start, 8)?.try_into().unwrap()) as usize;
+	let pointer = read_mem_to_type!(pid, start, u64) as usize;
 	let mem = read_memory(pid, pointer + start + offsets::MISSION_STATUS_OFFSET, 1)?;
 	info.is_mission = mem[0] != 0;
 

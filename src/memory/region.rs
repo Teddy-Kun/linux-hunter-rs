@@ -68,7 +68,7 @@ impl MemoryRegion {
 		}
 
 		match read_memory(pid, self.begin, self.end - self.begin) {
-			Ok(data) => self.data = Some(data.into_boxed_slice()),
+			Ok(data) => self.data = Some(data),
 			Err(e) => {
 				return Err(e);
 			}
@@ -88,7 +88,7 @@ pub fn read_memory(
 	pid: Pid,
 	start: usize,
 	length: usize,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Box<[u8]>, Box<dyn std::error::Error>> {
 	let mut buf = vec![0u8; length];
 
 	let local = IoSliceMut::new(&mut buf);
@@ -103,7 +103,18 @@ pub fn read_memory(
 		return Err(Error::new(&format!("Read {} bytes instead of {}", read_size, length)).into());
 	}
 
-	Ok(buf)
+	Ok(buf.into_boxed_slice())
+}
+
+#[macro_export]
+macro_rules! read_mem_to_type {
+	($pid:expr, $start:expr, $t:ty) => {{
+		let ptr_loc: Box<[u8]> = read_memory($pid, $start, 4)?;
+		let ptr_ptr: *mut [u8; 4] = Box::into_raw(ptr_loc) as *mut [u8; 4];
+		// Create a slice from the pointer and interpret it as type T
+		let sliced_slice: $t = unsafe { std::ptr::read(ptr_ptr as *const $t) };
+		sliced_slice
+	}};
 }
 
 pub fn verify_regions(regions: &[MemoryRegion]) -> Result<(), Box<dyn std::error::Error>> {
