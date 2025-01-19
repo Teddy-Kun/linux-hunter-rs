@@ -20,6 +20,7 @@ use std::{
 	io,
 	time::{Duration, Instant},
 };
+use tracing::warn;
 
 #[derive(Debug)]
 pub struct App<'a> {
@@ -36,7 +37,7 @@ impl<'a> App<'a> {
 		// only get patterns that were actually found and can be used
 		let patterns = pattern_getters
 			.into_iter()
-			.filter(|p| p.index.is_some())
+			.filter(|p| p.mem_start.is_some())
 			.collect();
 
 		Self {
@@ -76,7 +77,10 @@ impl<'a> App<'a> {
 	pub fn main_update_loop(&mut self) {
 		let now = Instant::now();
 
-		let _ = update_all(self.mhw_pid, &self.patterns);
+		match update_all(self.mhw_pid, &self.patterns) {
+			Ok(data) => self.data = data,
+			Err(e) => warn!("failed to update: {}", e),
+		}
 
 		self.frametime = now.elapsed().as_millis();
 	}

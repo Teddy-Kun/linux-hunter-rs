@@ -6,10 +6,10 @@ use nix::unistd::Pid;
 use region::MemoryRegion;
 use sscanf::scanf;
 use std::fs;
+use tracing::debug;
 
 pub fn get_memory_regions(
 	pid: Pid,
-	debug: bool,
 	dump_loc: &Option<String>,
 ) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
 	// dont load the games memory if we are supposed to load from a dump
@@ -23,9 +23,7 @@ pub fn get_memory_regions(
 
 	let mut regions: Vec<MemoryRegion> = Vec::new();
 
-	if debug {
-		println!("lines: {}", maps.lines().count());
-	}
+	debug!("lines: {}", maps.lines().count());
 
 	for line in maps.lines() {
 		match scanf!(
@@ -44,9 +42,7 @@ pub fn get_memory_regions(
 		};
 	}
 
-	if debug {
-		println!("regions: {}", regions.len());
-	}
+	debug!("regions: {}", regions.len());
 
 	Ok(regions)
 }

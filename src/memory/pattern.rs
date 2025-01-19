@@ -1,4 +1,3 @@
-use crate::err::Error;
 use nom::{
 	bytes::streaming::{tag, take},
 	sequence::tuple,
@@ -20,8 +19,8 @@ pub enum PatternType {
 
 #[derive(Debug)]
 pub struct PatternGetter {
-	pub index: Option<usize>, // index of the memory region where the pattern was found - has to be set from outside
-	pub offset: Option<usize>, // offset of where it was found, relative to the start of the region
+	pub mem_start: Option<usize>, // start of the memory region where the pattern was found - has to be set from outside
+	pub offset: Option<usize>,    // offset of where it was found, relative to the start of the region
 	pub pattern_type: PatternType,
 	find_func: fn(&[u8]) -> MemSearchResult,
 }
@@ -32,7 +31,7 @@ impl PatternGetter {
 			pattern_type,
 			find_func,
 			offset: None,
-			index: None,
+			mem_start: None,
 		}
 	}
 
@@ -42,7 +41,7 @@ impl PatternGetter {
 				self.offset = Some(res);
 			}
 			Err(e) => {
-				self.index = None;
+				self.mem_start = None;
 				self.offset = None;
 				return Err(e);
 			}
@@ -59,7 +58,7 @@ pub fn get_search_index(
 	let mut i;
 	match memchr::memchr(first_three_bytes[0], input) {
 		Some(pos) => i = pos,
-		None => return Err(Error::new("pattern not found").into()),
+		None => return Err("pattern not found".into()),
 	};
 
 	while i < input.len() - 2 {
@@ -69,11 +68,11 @@ pub fn get_search_index(
 
 		match memchr::memchr(first_three_bytes[0], &input[i + 1..]) {
 			Some(pos) => i += pos + 1,
-			None => return Err(Error::new("pattern not found").into()),
+			None => return Err("pattern not found".into()),
 		};
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
@@ -114,7 +113,7 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 			}
 		}
 	}
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8
@@ -151,7 +150,7 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 04 33 C9
@@ -188,7 +187,7 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 0D
@@ -227,7 +226,7 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 05 ?? ?? ?? ?? 41 8B 94 00 ?? ?? ?? ?? 89 57
@@ -264,7 +263,7 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E ?? F3 0F 10 86 ?? ?? ?? ?? F3 0F 58 86 ?? ?? ?? ?? F3 0F 11 86 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E
@@ -311,7 +310,7 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 // 45 6D 65 74 74 61
@@ -327,7 +326,7 @@ pub fn find_emetta(input: &[u8]) -> MemSearchResult {
 					return Ok(pos);
 				}
 
-				Err(Error::new("pattern not found").into())
+				Err("pattern not found".into())
 			}
 			Err(e) => Err(e),
 		},
@@ -371,7 +370,7 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err(Error::new("pattern not found").into())
+	Err("pattern not found".into())
 }
 
 #[cfg(test)]

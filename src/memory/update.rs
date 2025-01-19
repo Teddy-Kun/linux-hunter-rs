@@ -1,6 +1,7 @@
 use std::str;
 
 use nix::unistd::Pid;
+use tracing::{debug, error};
 
 use crate::{
 	mhw::{
@@ -30,11 +31,16 @@ fn get_session_data(
 		is_expedition: false,
 	};
 
-	if pattern.index.is_none() || pattern.offset.is_none() {
+	if pattern.mem_start.is_none() || pattern.offset.is_none() {
 		return Ok(info);
 	}
 
-	let start = pattern.index.unwrap() + pattern.offset.unwrap();
+	debug!(
+		"first bytes: {:0X?}",
+		read_memory(pid, pattern.mem_start.unwrap(), 4)?
+	);
+
+	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
 	let pointer = read_mem_to_type!(pid, start, u32) as usize;
 
 	let mem = read_memory(
@@ -54,7 +60,7 @@ fn get_session_data(
 	info.hostname = unsafe { str::from_boxed_utf8_unchecked(mem) };
 
 	// TODO: not working, find out why and fix this
-	let start = pattern.index.unwrap() + pattern.offset.unwrap();
+	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
 	let pointer = read_mem_to_type!(pid, start, u64) as usize;
 	let mem = read_memory(pid, pointer + start + offsets::MISSION_STATUS_OFFSET, 1)?;
 	info.is_mission = mem[0] != 0;
@@ -79,10 +85,10 @@ fn get_monster_data(
 ) -> Result<Box<[MonsterInfo]>, Box<dyn std::error::Error>> {
 	let pattern = &patterns[PatternType::Monsters as usize];
 
-	let start = pattern.index.unwrap() + pattern.offset.unwrap();
+	let start = pattern.mem_start.unwrap() + pattern.offset.unwrap();
 	let mem = read_memory(pid, start, 256)?;
 
-	println!("{:02X?}", mem);
+	debug!("{:02X?}", mem);
 
 	Err("not implemented".into())
 }
@@ -96,17 +102,17 @@ pub fn update_all(
 	patterns: &[PatternGetter],
 ) -> Result<GameData, Box<dyn std::error::Error>> {
 	let mut data = GameData::new(get_session_data(pid, patterns)?);
-	println!("session info: {:#?}", data.session);
+	debug!("session info: {:#?}", data.session);
 
 	if data.session.is_expedition || data.session.is_mission {
 		match get_damage(pid, patterns) {
 			Ok(damage) => data.players = damage,
-			Err(e) => println!("failed to get player damage: {}", e),
+			Err(e) => error!("failed to get player damage: {}", e),
 		}
 
 		match get_monster_data(pid, patterns) {
 			Ok(monsters) => data.monsters = monsters,
-			Err(e) => println!("failed to get monster data: {}", e),
+			Err(e) => error!("failed to get monster data: {}", e),
 		}
 	}
 

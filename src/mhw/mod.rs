@@ -2,7 +2,6 @@ pub mod data;
 pub mod monster;
 pub mod offsets;
 
-use crate::err::Error;
 use nix::unistd::Pid;
 use std::{
 	fs::{self, read_dir},
@@ -51,5 +50,5 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 		}
 	}
 
-	Err(Error::new("Can't find MH:W pid").into())
+	Err("Can't find MH:W pid".into())
 }

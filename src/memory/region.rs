@@ -6,8 +6,7 @@ use std::{
 	fs::File,
 	io::{IoSliceMut, Write},
 };
-
-use crate::err::Error;
+use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct MemoryRegion {
@@ -76,7 +75,7 @@ impl MemoryRegion {
 
 		if let Some(path) = dump_mem {
 			if let Err(e) = self.dump_mem(&path) {
-				eprintln!("Failed to dump memory: {}", e);
+				warn!("Failed to dump memory: {}", e);
 			}
 		}
 
@@ -100,7 +99,7 @@ pub fn read_memory(
 	let read_size = process_vm_readv(pid, &mut [local], &[remote])?;
 
 	if read_size != length {
-		return Err(Error::new(&format!("Read {} bytes instead of {}", read_size, length)).into());
+		return Err(format!("Read {} bytes instead of {}", read_size, length).into());
 	}
 
 	Ok(buf.into_boxed_slice())
@@ -110,8 +109,13 @@ pub fn read_memory(
 macro_rules! read_mem_to_type {
 	($pid:expr, $start:expr, $t:ty) => {{
 		let ptr_loc: Box<[u8]> = read_memory($pid, $start, 4)?;
+
+		use tracing::debug;
+		debug!("{:02X?}", ptr_loc);
+
 		let ptr_ptr: *mut [u8; 4] = Box::into_raw(ptr_loc) as *mut [u8; 4];
 		// Create a slice from the pointer and interpret it as type T
+		// this is always safe, since we always get data of the right size
 		let sliced_slice: $t = unsafe { std::ptr::read(ptr_ptr as *const $t) };
 		sliced_slice
 	}};
@@ -121,7 +125,7 @@ pub fn verify_regions(regions: &[MemoryRegion]) -> Result<(), Box<dyn std::error
 	let mut prev_beg = regions[0].begin;
 	for region in regions.iter().skip(1) {
 		if region.begin < prev_beg {
-			return Err(Error::new("Invalid region sequence - order").into());
+			return Err("Invalid region sequence - order".into());
 		}
 
 		prev_beg = region.begin;
