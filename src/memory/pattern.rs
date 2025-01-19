@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use nom::{
 	bytes::streaming::{tag, take},
 	sequence::tuple,
@@ -31,9 +33,10 @@ impl MemoryLocation {
 	}
 }
 
-impl ToString for MemoryLocation {
-	fn to_string(&self) -> String {
-		format!(
+impl Display for MemoryLocation {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
 			"start: 0x{:02X}; offset: {}; addr: {}",
 			self.start,
 			self.offset,
