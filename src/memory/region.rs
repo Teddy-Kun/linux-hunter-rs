@@ -14,7 +14,7 @@ pub struct MemoryRegion {
 	begin: usize,
 	pub debug_name: String,
 	pub debug_info: String,
-	pub data: Vec<u8>,
+	pub data: Box<[u8]>,
 	pub data_sz: usize,
 	pub dirty: bool,
 	pub from_vec: bool,
@@ -26,7 +26,7 @@ impl MemoryRegion {
 			begin,
 			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
-			data: vec![],
+			data: Box::new([]),
 			data_sz: (end - begin),
 			dirty: true,
 			from_vec: false,
@@ -40,7 +40,7 @@ impl MemoryRegion {
 			begin: 0,
 			debug_name: debug_name.to_string(),
 			debug_info: debug_info.to_string(),
-			data,
+			data: data.into_boxed_slice(),
 			data_sz,
 			dirty: false,
 			from_vec: true,
@@ -49,12 +49,6 @@ impl MemoryRegion {
 
 	pub fn get_begin(&self) -> usize {
 		self.begin
-	}
-
-	pub fn clear(&mut self) {
-		self.data_sz = 0;
-		self.dirty = true;
-		self.data.clear();
 	}
 
 	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -77,7 +71,7 @@ impl MemoryRegion {
 		}
 
 		match read_memory(pid, self.begin, self.data_sz) {
-			Ok(data) => self.data = data,
+			Ok(data) => self.data = data.into_boxed_slice(),
 			Err(e) => {
 				self.dirty = true;
 				return Err(e);

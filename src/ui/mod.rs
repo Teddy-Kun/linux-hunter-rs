@@ -5,7 +5,7 @@ use crate::conf::Config;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use linux_hunter_lib::{
 	memory::{pattern::PatternGetter, update::update_all},
-	mhw::data::{Crown, FullData, MonsterInfo, PlayerInfo},
+	mhw::data::{Crown, GameData, MonsterInfo, PlayerInfo},
 };
 use monster::Monster;
 use nix::unistd::Pid;
@@ -26,7 +26,7 @@ pub struct App<'a> {
 	exit: bool,
 	mhw_pid: Pid,
 	conf: &'a Config,
-	data: FullData,
+	data: GameData,
 	patterns: Vec<PatternGetter>,
 	frametime: u128,
 }
@@ -43,7 +43,7 @@ impl<'a> App<'a> {
 			conf,
 			mhw_pid,
 			exit: false,
-			data: FullData::default(),
+			data: GameData::default(),
 			patterns,
 			frametime: 0,
 		}
@@ -51,27 +51,18 @@ impl<'a> App<'a> {
 
 	/// runs the application's main loop until the user quits
 	pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-		self.data.players = [
-			Some(PlayerInfo {
-				name: "Player 1".to_string(),
-				damage: 2500,
-				left_session: false,
-			}),
-			None,
-			None,
-			None,
-		];
+		self.data.players = Box::new([PlayerInfo {
+			name: "Player 1".to_string(),
+			damage: 2500,
+			left_session: false,
+		}]);
 
-		self.data.monsters = [
-			Some(MonsterInfo {
-				name: "Rathalos".to_string(),
-				crown: Some(Crown::Gold),
-				hp: 12586,
-				max_hp: 20600,
-			}),
-			None,
-			None,
-		];
+		self.data.monsters = Box::new([MonsterInfo {
+			name: "Rathalos".to_string(),
+			crown: Some(Crown::Gold),
+			hp: 12586,
+			max_hp: 20600,
+		}]);
 
 		while !self.exit {
 			self.main_update_loop();
@@ -138,7 +129,7 @@ impl<'a> Widget for &'a App<'a> {
 
 		let total_damage = self.data.get_total_damage();
 		let mut index = 0;
-		for player in self.data.players.iter().flatten() {
+		for player in self.data.players.iter() {
 			let name = match player.left_session {
 				true => "<Left Session>",
 				false => &player.name,
@@ -152,7 +143,7 @@ impl<'a> Widget for &'a App<'a> {
 
 		index = 0;
 		if self.conf.show_monsters {
-			for monster in self.data.monsters.iter().flatten() {
+			for monster in self.data.monsters.iter() {
 				let crown = match self.conf.show_crowns {
 					true => monster.crown,
 					false => None,

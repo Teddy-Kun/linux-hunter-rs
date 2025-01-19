@@ -1,19 +1,14 @@
 use nix::unistd::Pid;
 
-use crate::mhw::offsets;
+use crate::mhw::{
+	data::{GameData, MonsterInfo, PlayerInfo, SessionInfo},
+	offsets,
+};
 
 use super::{
 	pattern::{PatternGetter, PatternType},
 	region::read_memory,
 };
-
-#[derive(Debug)]
-struct SessionInfo {
-	pub session_id: String,
-	pub hostname: String,
-	pub is_mission: bool,
-	pub is_expedition: bool,
-}
 
 fn get_session_data(
 	pid: Pid,
@@ -66,14 +61,17 @@ fn get_session_data(
 	Ok(info)
 }
 
-fn get_damage(pid: Pid, patterns: &[PatternGetter]) -> Result<(), Box<dyn std::error::Error>> {
+fn get_damage(
+	pid: Pid,
+	patterns: &[PatternGetter],
+) -> Result<Box<[PlayerInfo]>, Box<dyn std::error::Error>> {
 	Err("not implemented".into())
 }
 
 fn get_monster_data(
 	pid: Pid,
 	patterns: &[PatternGetter],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Box<[MonsterInfo]>, Box<dyn std::error::Error>> {
 	let pattern = &patterns[PatternType::Monsters as usize];
 
 	let start = pattern.index.unwrap() + pattern.offset.unwrap();
@@ -84,17 +82,28 @@ fn get_monster_data(
 	Err("not implemented".into())
 }
 
-pub fn update_all(pid: Pid, patterns: &[PatternGetter]) -> Result<(), Box<dyn std::error::Error>> {
-	let lobby_data = get_session_data(pid, patterns)?;
-	println!("session info: {:#?}", lobby_data);
+fn get_single_monster() -> Result<MonsterInfo, Box<dyn std::error::Error>> {
+	Err("not implemented".into())
+}
 
-	if lobby_data.is_expedition || lobby_data.is_mission {
-		get_damage(pid, patterns).unwrap()
+pub fn update_all(
+	pid: Pid,
+	patterns: &[PatternGetter],
+) -> Result<GameData, Box<dyn std::error::Error>> {
+	let mut data = GameData::new(get_session_data(pid, patterns)?);
+	println!("session info: {:#?}", data.session);
+
+	if data.session.is_expedition || data.session.is_mission {
+		match get_damage(pid, patterns) {
+			Ok(damage) => data.players = damage,
+			Err(e) => println!("failed to get player damage: {}", e),
+		}
+
+		match get_monster_data(pid, patterns) {
+			Ok(monsters) => data.monsters = monsters,
+			Err(e) => println!("failed to get monster data: {}", e),
+		}
 	}
 
-	get_monster_data(pid, patterns).unwrap();
-
-	panic!("not implemented");
-
-	Ok(())
+	Ok(data)
 }

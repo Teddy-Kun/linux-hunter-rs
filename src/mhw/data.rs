@@ -45,28 +45,35 @@ impl MonsterInfo {
 }
 
 #[derive(Debug, Default)]
-pub struct FullData {
-	pub players: [Option<PlayerInfo>; 4],
-	pub monsters: [Option<MonsterInfo>; 3],
+pub struct SessionInfo {
 	pub session_id: String,
-	pub host_name: String,
+	pub hostname: String,
+	pub is_mission: bool,
+	pub is_expedition: bool,
 }
 
-impl FullData {
+#[derive(Debug, Default)]
+pub struct GameData {
+	pub session: SessionInfo,
+	pub monsters: Box<[MonsterInfo]>,
+	pub players: Box<[PlayerInfo]>,
+}
+
+impl GameData {
+	pub fn new(session: SessionInfo) -> Self {
+		Self {
+			session,
+			monsters: Box::new([]),
+			players: Box::new([]),
+		}
+	}
+
 	pub fn get_total_damage(&self) -> usize {
 		let mut total: usize = 0;
-		for player in self.players.iter().flatten() {
+		for player in self.players.iter() {
 			total += player.damage;
 		}
 
 		total
-	}
-
-	pub fn get_num_players(&self) -> usize {
-		self.players.iter().filter(|p| p.is_some()).count()
-	}
-
-	pub fn get_num_monsters(&self) -> usize {
-		self.monsters.iter().filter(|m| m.is_some()).count()
 	}
 }
