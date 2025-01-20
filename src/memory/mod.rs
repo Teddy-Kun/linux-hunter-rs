@@ -8,10 +8,7 @@ use sscanf::scanf;
 use std::fs;
 use tracing::debug;
 
-pub fn get_memory_regions(
-	pid: Pid,
-	dump_loc: Option<Box<str>>,
-) -> anyhow::Result<Vec<MemoryRegion>> {
+pub fn get_memory_regions(pid: Pid, dump_loc: Option<&str>) -> anyhow::Result<Vec<MemoryRegion>> {
 	// dont load the games memory if we are supposed to load from a dump
 	// usefull for debugging
 	if let Some(path) = dump_loc {

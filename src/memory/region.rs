@@ -57,7 +57,7 @@ impl MemoryRegion {
 		Ok(())
 	}
 
-	pub fn fill_data(&mut self, pid: Pid, dump_mem: Option<Box<str>>) -> anyhow::Result<()> {
+	pub fn fill_data(&mut self, pid: Pid, dump_mem: Option<&str>) -> anyhow::Result<()> {
 		if self.from_vec {
 			return Ok(());
 		}
