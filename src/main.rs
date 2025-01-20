@@ -35,7 +35,7 @@ pub const EMETTA: usize = 5;
 pub const PLAYER_NAME_LINUX: usize = 6;
 pub const LOBBY_STATUS: usize = 7;
 
-fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
+fn main_loop(conf: Config) -> anyhow::Result<()> {
 	let start = std::time::Instant::now();
 
 	let mut mhw_pid = Pid::from_raw(0);
@@ -64,7 +64,7 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 			Some(pid) => mhw_pid = Pid::from_raw(pid),
 			None => {
 				if conf.load_dump.is_none() {
-					return Err("No MHW PID or dump path given".into());
+					return Err(anyhow::anyhow!("No MHW PID or dump path given"));
 				}
 			}
 		}
@@ -142,15 +142,17 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	if pattern_getters[PLAYER_NAME_LINUX].mem_location.is_none() {
-		return Err("Can't find AoB for patterns::PlayerNameLinux".into());
+		return Err(anyhow::anyhow!(
+			"Can't find AoB for patterns::PlayerNameLinux"
+		));
 	}
 
 	if pattern_getters[PLAYER_DAMAGE].mem_location.is_none() {
-		return Err("Can't find AoB for patterns::PlayerDamage".into());
+		return Err(anyhow::anyhow!("Can't find AoB for patterns::PlayerDamage"));
 	}
 
 	if conf.show_monsters && pattern_getters[MONSTER].mem_location.is_none() {
-		return Err("Can't find AoB for patterns::Monster".into());
+		return Err(anyhow::anyhow!("Can't find AoB for patterns::Monster"));
 	}
 
 	// drop the ~3gb of memory regions, since we will use direct memory access to get the data
@@ -165,13 +167,7 @@ fn main_loop(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
-	let conf = match get_config() {
-		Ok(conf) => conf,
-		Err(e) => {
-			eprintln!("Failed to get config: {}", e);
-			std::process::exit(1);
-		}
-	};
+	let conf = get_config();
 
 	let log_file = if let Some(ref path) = conf.log_file {
 		match File::create(&**path) {

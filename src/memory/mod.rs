@@ -11,7 +11,7 @@ use tracing::debug;
 pub fn get_memory_regions(
 	pid: Pid,
 	dump_loc: Option<Box<str>>,
-) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
+) -> anyhow::Result<Vec<MemoryRegion>> {
 	// dont load the games memory if we are supposed to load from a dump
 	// usefull for debugging
 	if let Some(path) = dump_loc {
@@ -47,7 +47,7 @@ pub fn get_memory_regions(
 	Ok(regions)
 }
 
-fn load_dump(path: &str) -> Result<Vec<MemoryRegion>, Box<dyn std::error::Error>> {
+fn load_dump(path: &str) -> anyhow::Result<Vec<MemoryRegion>> {
 	let dir = fs::read_dir(path)?;
 
 	let mut res = Vec::new();

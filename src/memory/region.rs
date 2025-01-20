@@ -45,7 +45,7 @@ impl MemoryRegion {
 		self.begin
 	}
 
-	fn dump_mem(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+	fn dump_mem(&self, path: &str) -> anyhow::Result<()> {
 		if let Some(data) = &self.data {
 			let path = path.to_string() + "/" + self.debug_name.as_str() + ".bin";
 			let mut file = File::create(path)?;
@@ -57,11 +57,7 @@ impl MemoryRegion {
 		Ok(())
 	}
 
-	pub fn fill_data(
-		&mut self,
-		pid: Pid,
-		dump_mem: Option<Box<str>>,
-	) -> Result<(), Box<dyn std::error::Error>> {
+	pub fn fill_data(&mut self, pid: Pid, dump_mem: Option<Box<str>>) -> anyhow::Result<()> {
 		if self.from_vec {
 			return Ok(());
 		}
@@ -83,11 +79,7 @@ impl MemoryRegion {
 	}
 }
 
-pub fn read_memory(
-	pid: Pid,
-	start: usize,
-	length: usize,
-) -> Result<Box<[u8]>, Box<dyn std::error::Error>> {
+pub fn read_memory(pid: Pid, start: usize, length: usize) -> anyhow::Result<Box<[u8]>> {
 	let mut buf = vec![0u8; length];
 
 	let local = IoSliceMut::new(&mut buf);
@@ -99,7 +91,11 @@ pub fn read_memory(
 	let read_size = process_vm_readv(pid, &mut [local], &[remote])?;
 
 	if read_size != length {
-		return Err(format!("Read {} bytes instead of {}", read_size, length).into());
+		return Err(anyhow::anyhow!(
+			"Read {} bytes instead of {}",
+			read_size,
+			length
+		));
 	}
 
 	Ok(buf.into_boxed_slice())
@@ -121,11 +117,11 @@ macro_rules! read_mem_to_type {
 	}};
 }
 
-pub fn verify_regions(regions: &[MemoryRegion]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn verify_regions(regions: &[MemoryRegion]) -> anyhow::Result<()> {
 	let mut prev_beg = regions[0].begin;
 	for region in regions.iter().skip(1) {
 		if region.begin < prev_beg {
-			return Err("Invalid region sequence - order".into());
+			return Err(anyhow::anyhow!("Invalid region sequence - order"));
 		}
 
 		prev_beg = region.begin;

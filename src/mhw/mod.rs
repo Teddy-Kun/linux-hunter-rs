@@ -10,7 +10,7 @@ use std::{
 
 const MHW_EXE: &str = "\\MonsterHunterWorld.exe";
 
-pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
+pub fn find_mhw_pid() -> anyhow::Result<Pid> {
 	// read "/proc"
 	let proc = read_dir("/proc")?;
 
@@ -50,5 +50,5 @@ pub fn find_mhw_pid() -> Result<Pid, Box<dyn std::error::Error>> {
 		}
 	}
 
-	Err("Can't find MH:W pid".into())
+	Err(anyhow::anyhow!("Can't find MH:W pid"))
 }

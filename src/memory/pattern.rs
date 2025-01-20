@@ -7,8 +7,6 @@ use nom::{
 
 use super::region::MemoryRegion;
 
-pub type MemSearchResult = Result<usize, Box<dyn std::error::Error>>;
-
 #[derive(Debug)]
 pub enum PatternType {
 	PlayerName,
@@ -49,11 +47,11 @@ impl Display for MemoryLocation {
 pub struct PatternGetter {
 	pub mem_location: Option<MemoryLocation>,
 	pub pattern_type: PatternType,
-	find_func: fn(&[u8]) -> MemSearchResult,
+	find_func: fn(&[u8]) -> Option<usize>,
 }
 
 impl PatternGetter {
-	pub fn new(pattern_type: PatternType, find_func: fn(&[u8]) -> MemSearchResult) -> Self {
+	pub fn new(pattern_type: PatternType, find_func: fn(&[u8]) -> Option<usize>) -> Self {
 		PatternGetter {
 			pattern_type,
 			find_func,
@@ -61,23 +59,23 @@ impl PatternGetter {
 		}
 	}
 
-	pub fn search(&mut self, mem_region: &MemoryRegion) -> Result<(), Box<dyn std::error::Error>> {
+	pub fn search(&mut self, mem_region: &MemoryRegion) -> anyhow::Result<()> {
 		let data = match &mem_region.data {
 			Some(data) => data,
-			None => return Err("Memory region has no data".into()),
+			None => return Err(anyhow::anyhow!("Memory region has no data")),
 		};
 
 		match (self.find_func)(data) {
-			Ok(res) => {
+			Some(res) => {
 				let loc = MemoryLocation {
 					start: mem_region.get_begin(),
 					offset: res,
 				};
 				self.mem_location = Some(loc);
 			}
-			Err(e) => {
+			None => {
 				self.mem_location = None;
-				return Err(e);
+				return Err(anyhow::anyhow!("not found"));
 			}
 		};
 
@@ -85,32 +83,22 @@ impl PatternGetter {
 	}
 }
 
-pub fn get_search_index(
-	first_three_bytes: &[u8; 3],
-	input: &[u8],
-) -> Result<usize, Box<dyn std::error::Error>> {
-	let mut i;
-	match memchr::memchr(first_three_bytes[0], input) {
-		Some(pos) => i = pos,
-		None => return Err("pattern not found".into()),
-	};
+pub fn get_search_index(first_three_bytes: &[u8; 3], input: &[u8]) -> Option<usize> {
+	let mut i = memchr::memchr(first_three_bytes[0], input)?;
 
 	while i < input.len() - 2 {
 		if input[i..3 + i] == *first_three_bytes {
-			return Ok(i);
+			return Some(i);
 		}
 
-		match memchr::memchr(first_three_bytes[0], &input[i + 1..]) {
-			Some(pos) => i += pos + 1,
-			None => return Err("pattern not found".into()),
-		};
+		i = memchr::memchr(first_three_bytes[0], &input[i + 1..])? + 1;
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
-pub fn find_player_name(input: &[u8]) -> MemSearchResult {
+pub fn find_player_name(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 37;
 
@@ -138,7 +126,7 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -147,11 +135,11 @@ pub fn find_player_name(input: &[u8]) -> MemSearchResult {
 			}
 		}
 	}
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8
-pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
+pub fn find_current_player_name(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 18;
 
@@ -174,7 +162,7 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -184,11 +172,11 @@ pub fn find_current_player_name(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 04 33 C9
-pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
+pub fn find_player_damage(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 22;
 
@@ -211,7 +199,7 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -221,11 +209,11 @@ pub fn find_player_damage(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 0D
-pub fn find_monster(input: &[u8]) -> MemSearchResult {
+pub fn find_monster(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 24;
 
@@ -250,7 +238,7 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -260,11 +248,11 @@ pub fn find_monster(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 05 ?? ?? ?? ?? 41 8B 94 00 ?? ?? ?? ?? 89 57
-pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
+pub fn find_player_buff(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x05];
 	let total_len = 17;
 
@@ -287,7 +275,7 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -297,11 +285,11 @@ pub fn find_player_buff(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E ?? F3 0F 10 86 ?? ?? ?? ?? F3 0F 58 86 ?? ?? ?? ?? F3 0F 11 86 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E
-pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
+pub fn find_lobby_status(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 39;
 
@@ -334,7 +322,7 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -344,32 +332,32 @@ pub fn find_lobby_status(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 // 45 6D 65 74 74 61
-pub fn find_emetta(input: &[u8]) -> MemSearchResult {
+pub fn find_emetta(input: &[u8]) -> Option<usize> {
 	// TODO: this is 100% broken, but since it didnt work in the og... maybe remove it completely?
 	let initial_bytes = [0x45, 0x6D, 0x65];
 	let secondary_bytes = [0x74, 0x74, 0x61];
 
 	match get_search_index(&initial_bytes, input) {
-		Ok(pos) => match get_search_index(&secondary_bytes, &input[pos..]) {
-			Ok(pos2) => {
+		Some(pos) => match get_search_index(&secondary_bytes, &input[pos..]) {
+			Some(pos2) => {
 				if pos2 == pos + 3 {
-					return Ok(pos);
+					return Some(pos);
 				}
 
-				Err("pattern not found".into())
+				None
 			}
-			Err(e) => Err(e),
+			None => None,
 		},
-		Err(e) => Err(e),
+		None => None,
 	}
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24 60 48 83 C4 50 5F C3
-pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
+pub fn find_player_name_linux(input: &[u8]) -> Option<usize> {
 	let initial_bytes = [0x48, 0x8B, 0x0D];
 	let total_len = 36;
 
@@ -394,7 +382,7 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 		total_pos += pos;
 
 		match pattern(sliced) {
-			Ok((_, _)) => return Ok(total_pos),
+			Ok((_, _)) => return Some(total_pos),
 			Err(_) => {
 				sliced = &sliced[1..];
 				pos = get_search_index(&initial_bytes, sliced)?;
@@ -404,7 +392,7 @@ pub fn find_player_name_linux(input: &[u8]) -> MemSearchResult {
 		}
 	}
 
-	Err("pattern not found".into())
+	None
 }
 
 #[cfg(test)]
@@ -423,8 +411,8 @@ mod tests {
 			0x94, 0x87, 0x28, 0x02, 0x00, 0x00, 0xe8, 0x66,
 		];
 
-		if let Err(e) = find_player_name(&data) {
-			panic!("error: {}", e);
+		if find_player_name(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -435,8 +423,8 @@ mod tests {
 			0xC9, 0x41, 0x89, 0xC0, 0xE8, 0x00,
 		];
 
-		if let Err(e) = find_current_player_name(&data) {
-			panic!("error: {}", e);
+		if find_current_player_name(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -447,8 +435,8 @@ mod tests {
 			0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9, 0x00,
 		];
 
-		if let Err(e) = find_player_damage(&data) {
-			panic!("error: {}", e);
+		if find_player_damage(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -459,8 +447,8 @@ mod tests {
 			0x00, 0xC6, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x0D, 0x00,
 		];
 
-		if let Err(e) = find_monster(&data) {
-			panic!("error: {}", e);
+		if find_monster(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -471,8 +459,8 @@ mod tests {
 			0x00, 0x00, 0x89, 0x57, 0x00,
 		];
 
-		if let Err(e) = find_player_buff(&data) {
-			panic!("error: {}", e);
+		if find_player_buff(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -485,8 +473,8 @@ mod tests {
 			0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x4E, 0x00,
 		];
 
-		if let Err(e) = find_lobby_status(&data) {
-			panic!("error: {}", e);
+		if find_lobby_status(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 
@@ -496,7 +484,7 @@ mod tests {
 	// let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
 	//
 	// if let Err(e) = find_emetta(&data) {
-	// panic!("error: {}", e);
+	// panic!("pattern not found");
 	// }
 	// }
 
@@ -508,8 +496,8 @@ mod tests {
 			0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3, 0x00,
 		];
 
-		if let Err(e) = find_player_name_linux(&data) {
-			panic!("error: {}", e);
+		if find_player_name_linux(&data).is_none() {
+			panic!("pattern not found");
 		}
 	}
 }

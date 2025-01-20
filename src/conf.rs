@@ -64,7 +64,7 @@ impl Config {
 	}
 }
 
-pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
+pub fn get_config() -> Config {
 	let mut conf = Config::parse();
 
 	if conf.log_file.is_none() {
@@ -77,5 +77,5 @@ pub fn get_config() -> Result<Config, Box<dyn std::error::Error>> {
 		}
 	}
 
-	Ok(conf)
+	conf
 }

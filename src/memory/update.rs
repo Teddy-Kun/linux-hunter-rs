@@ -13,10 +13,7 @@ use nix::unistd::Pid;
 use std::str;
 use tracing::{debug, error, trace};
 
-fn get_session_data(
-	pid: Pid,
-	patterns: &[PatternGetter],
-) -> Result<SessionInfo, Box<dyn std::error::Error>> {
+fn get_session_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<SessionInfo> {
 	// TODO: maybe only copy memory to a buffer with 1 syscall, then read from it, instead of using 4 syscalls?
 
 	let pattern = &patterns[PatternType::LobbyStatus as usize];
@@ -67,18 +64,12 @@ fn get_session_data(
 	Ok(info)
 }
 
-fn get_damage(
-	pid: Pid,
-	patterns: &[PatternGetter],
-) -> Result<Box<[PlayerInfo]>, Box<dyn std::error::Error>> {
+fn get_damage(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Box<[PlayerInfo]>> {
 	trace!("pid: {}, patterns: {:#?}", pid, patterns);
-	Err("not implemented".into())
+	Err(anyhow::anyhow!("not implemented"))
 }
 
-fn get_monster_data(
-	pid: Pid,
-	patterns: &[PatternGetter],
-) -> Result<Box<[MonsterInfo]>, Box<dyn std::error::Error>> {
+fn get_monster_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Box<[MonsterInfo]>> {
 	let pattern = &patterns[PatternType::Monsters as usize];
 
 	let start = pattern.mem_location.unwrap().get_addr();
@@ -88,18 +79,18 @@ fn get_monster_data(
 
 	get_single_monster()?;
 
-	Err("not implemented".into())
+	Err(anyhow::anyhow!("not implemented"))
 }
 
-fn get_single_monster() -> Result<MonsterInfo, Box<dyn std::error::Error>> {
-	Err("not implemented".into())
+fn get_single_monster() -> anyhow::Result<MonsterInfo> {
+	Err(anyhow::anyhow!("not implemented"))
 }
 
 pub fn update_all(
 	pid: Pid,
 	patterns: &[PatternGetter],
 	get_monsters: bool,
-) -> Result<GameData, Box<dyn std::error::Error>> {
+) -> anyhow::Result<GameData> {
 	let mut data = GameData::new(get_session_data(pid, patterns)?);
 	debug!("session info: {:#?}", data.session);
 

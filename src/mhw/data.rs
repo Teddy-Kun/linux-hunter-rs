@@ -37,17 +37,12 @@ pub struct MonsterInfo {
 }
 
 impl MonsterInfo {
-	pub fn new(
-		id: u32,
-		hp: u32,
-		max_hp: u32,
-		size: f64,
-	) -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn new(id: u32, hp: u32, max_hp: u32, size: f64) -> anyhow::Result<Self> {
 		let monster_data = match MONSTER_MAP.get(&id) {
+			Some(monster) => *monster,
 			None => {
-				return Err(format!("unknown monster id: {}", id).into());
+				return Err(anyhow::anyhow!("Monster not found: {}", id));
 			}
-			Some(data) => *data,
 		};
 		let crown = Self::calc_crown(size, monster_data);
 		Ok(Self {
