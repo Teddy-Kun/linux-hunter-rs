@@ -72,7 +72,7 @@ fn main_loop(conf: Config) -> anyhow::Result<()> {
 
 	info!("finding main AoB entry points...");
 
-	let mut regions = get_memory_regions(mhw_pid, conf.load_dump.clone())?;
+	let mut regions = get_memory_regions(mhw_pid, conf.load_dump.as_deref())?;
 	verify_regions(&regions)?;
 
 	if conf.dump_mem.is_some() {
@@ -83,7 +83,7 @@ fn main_loop(conf: Config) -> anyhow::Result<()> {
 	}
 
 	for region in &mut regions {
-		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.clone()) {
+		if let Err(e) = region.fill_data(mhw_pid, conf.dump_mem.as_deref()) {
 			warn!("Failed to fill region data: {}\n{}\n", e, region.debug_info)
 		}
 	}
