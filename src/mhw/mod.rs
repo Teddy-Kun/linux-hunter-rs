@@ -43,7 +43,7 @@ pub fn find_mhw_pid() -> anyhow::Result<Pid> {
 			}
 
 			if contents.contains(MHW_EXE) {
-				// TODO: implement the simple path logic
+				// TODO?: implement the simple path logic
 				// is that even necessary?
 				return Ok(Pid::from_raw(name.parse::<i32>()?));
 			}
