@@ -347,23 +347,8 @@ pub fn find_lobby_status(input: &[u8]) -> Option<usize> {
 
 // 45 6D 65 74 74 61
 pub fn find_emetta(input: &[u8]) -> Option<usize> {
-	// TODO: this is 100% broken, but since it didnt work in the og... maybe remove it completely?
-	let initial_bytes = [0x45, 0x6D, 0x65];
-	let secondary_bytes = [0x74, 0x74, 0x61];
-
-	match get_search_index(&initial_bytes, input) {
-		Some(pos) => match get_search_index(&secondary_bytes, &input[pos..]) {
-			Some(pos2) => {
-				if pos2 == pos + 3 {
-					return Some(pos);
-				}
-
-				None
-			}
-			None => None,
-		},
-		None => None,
-	}
+	let bytes = [0x45, 0x6D, 0x65, 0x74, 0x74, 0x61];
+	get_search_index(&bytes, input)
 }
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24 60 48 83 C4 50 5F C3
@@ -421,8 +406,11 @@ mod tests {
 			0x94, 0x87, 0x28, 0x02, 0x00, 0x00, 0xe8, 0x66,
 		];
 
-		if find_player_name(&data).is_none() {
-			panic!("pattern not found");
+		match find_player_name(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 
@@ -433,8 +421,11 @@ mod tests {
 			0xC9, 0x41, 0x89, 0xC0, 0xE8, 0x00,
 		];
 
-		if find_current_player_name(&data).is_none() {
-			panic!("pattern not found");
+		match find_current_player_name(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 
@@ -445,8 +436,11 @@ mod tests {
 			0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9, 0x00,
 		];
 
-		if find_player_damage(&data).is_none() {
-			panic!("pattern not found");
+		match find_player_damage(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 
@@ -457,8 +451,11 @@ mod tests {
 			0x00, 0xC6, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8B, 0x0D, 0x00,
 		];
 
-		if find_monster(&data).is_none() {
-			panic!("pattern not found");
+		match find_monster(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 
@@ -469,8 +466,11 @@ mod tests {
 			0x00, 0x00, 0x89, 0x57, 0x00,
 		];
 
-		if find_player_buff(&data).is_none() {
-			panic!("pattern not found");
+		match find_player_buff(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x05]);
+			}
 		}
 	}
 
@@ -484,20 +484,25 @@ mod tests {
 			0x00, 0x00, 0x00, 0x48, 0x8B, 0x4E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		];
 
-		if find_lobby_status(&data).is_none() {
-			panic!("pattern not found");
+		match find_lobby_status(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 
-	// TODO: emetta is currently broken
-	// #[test]
-	// fn test_find_emetta() {
-	// let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
-	//
-	// if let Err(e) = find_emetta(&data) {
-	// panic!("pattern not found");
-	// }
-	// }
+	#[test]
+	fn test_find_emetta() {
+		let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
+
+		match find_emetta(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 6], [0x45, 0x6D, 0x65, 0x74, 0x74, 0x61]);
+			}
+		}
+	}
 
 	#[test]
 	fn test_find_player_name_linux() {
@@ -507,8 +512,11 @@ mod tests {
 			0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3, 0x00,
 		];
 
-		if find_player_name_linux(&data).is_none() {
-			panic!("pattern not found");
+		match find_player_name_linux(&data) {
+			None => panic!("pattern not found"),
+			Some(pos) => {
+				assert_eq!(data[pos..pos + 3], [0x48, 0x8B, 0x0D]);
+			}
 		}
 	}
 }
