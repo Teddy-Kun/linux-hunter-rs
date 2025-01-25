@@ -109,7 +109,8 @@ macro_rules! read_mem_to_type {
 		use tracing::debug;
 		debug!("ptr_loc: {:02X?}", ptr_loc);
 
-		let ptr_ptr: *mut [u8; 4] = Box::into_raw(ptr_loc) as *mut [u8; 4];
+		let ptr_ptr: *mut [u8; size_of::<$t>()] =
+			Box::into_raw(ptr_loc) as *mut [u8; size_of::<$t>()];
 		// Create a slice from the pointer and interpret it as type T
 		// this is always safe, since we always get data of the right size
 		let sliced_slice: $t = unsafe { std::ptr::read(ptr_ptr as *const $t) };
