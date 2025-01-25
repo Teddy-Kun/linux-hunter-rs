@@ -23,11 +23,16 @@ pub enum PatternType {
 pub struct MemoryLocation {
 	pub start: usize,  // start of the memory region where the pattern was found
 	pub offset: usize, // offset of where it was found, relative to the start of the region
+	pub address: usize,
 }
 
 impl MemoryLocation {
-	pub fn get_addr(&self) -> usize {
-		self.start + self.offset
+	pub fn new(start: usize, offset: usize) -> Self {
+		Self {
+			start: start,
+			offset: offset,
+			address: start + offset,
+		}
 	}
 }
 
@@ -36,9 +41,7 @@ impl Display for MemoryLocation {
 		write!(
 			f,
 			"start: 0x{:02X}; offset: {}; addr: {}",
-			self.start,
-			self.offset,
-			self.get_addr()
+			self.start, self.offset, self.address,
 		)
 	}
 }
@@ -67,10 +70,7 @@ impl PatternGetter {
 
 		match (self.find_func)(data) {
 			Some(res) => {
-				let loc = MemoryLocation {
-					start: mem_region.get_begin(),
-					offset: res,
-				};
+				let loc = MemoryLocation::new(mem_region.get_begin(), res);
 				self.mem_location = Some(loc);
 			}
 			None => {

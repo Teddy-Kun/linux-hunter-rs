@@ -25,7 +25,7 @@ fn get_session_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Sess
 		return Ok(info);
 	}
 
-	let start = pattern.mem_location.unwrap().get_addr();
+	let start = pattern.mem_location.unwrap().address;
 	trace!("start: {}", start);
 
 	let pointer = read_mem_to_type!(pid, start, usize);
@@ -50,7 +50,7 @@ fn get_session_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Sess
 	trace!("Got host name");
 
 	// TODO: not working, find out why and fix this
-	let start = pattern.mem_location.unwrap().get_addr();
+	let start = pattern.mem_location.unwrap().address;
 	let pointer = read_mem_to_type!(pid, start, u64) as usize;
 	let mem = read_memory(pid, pointer + start + offsets::MISSION_STATUS_OFFSET, 1)?;
 	info.is_mission = mem[0] != 0;
@@ -72,7 +72,7 @@ fn get_damage(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Box<[Playe
 fn get_monster_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Box<[MonsterInfo]>> {
 	let pattern = &patterns[PatternType::Monsters as usize];
 
-	let start = pattern.mem_location.unwrap().get_addr();
+	let start = pattern.mem_location.unwrap().address;
 	let mem = read_memory(pid, start, 256)?;
 
 	debug!("{:02X?}", mem);
