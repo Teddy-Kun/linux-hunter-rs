@@ -29,8 +29,8 @@ pub struct MemoryLocation {
 impl MemoryLocation {
 	pub fn new(start: usize, offset: usize) -> Self {
 		Self {
-			start: start,
-			offset: offset,
+			start,
+			offset,
 			address: start + offset,
 		}
 	}

@@ -70,7 +70,7 @@ impl MemoryRegion {
 		}
 
 		if let Some(path) = dump_mem {
-			if let Err(e) = self.dump_mem(&path) {
+			if let Err(e) = self.dump_mem(path) {
 				warn!("Failed to dump memory: {}", e);
 			}
 		}
