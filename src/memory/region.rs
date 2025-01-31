@@ -6,7 +6,7 @@ use std::{
 	fs::File,
 	io::{IoSliceMut, Write},
 };
-use tracing::warn;
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone)]
 pub struct MemoryRegion {
@@ -129,4 +129,23 @@ pub fn verify_regions(regions: &[MemoryRegion]) -> anyhow::Result<()> {
 	}
 
 	Ok(())
+}
+
+pub fn load_rel_addr(pid: Pid, addr: usize) -> anyhow::Result<usize> {
+	const OP_CODE_LEN: usize = 3;
+	const PARAM_LEN: usize = 4;
+	const INSTRUCTION_LEN: usize = OP_CODE_LEN + PARAM_LEN;
+
+	let operand = read_mem_to_type!(pid, addr + OP_CODE_LEN, u32);
+	let mut big_operand = operand as u64;
+
+	debug!("operand: {}", big_operand);
+	debug!("big operand: {}", big_operand);
+
+	if big_operand > i32::MAX as u64 {
+		big_operand |= 0xffffffff00000000;
+		debug!("new big operand: {}", big_operand);
+	}
+
+	Ok(addr + INSTRUCTION_LEN + big_operand as usize)
 }

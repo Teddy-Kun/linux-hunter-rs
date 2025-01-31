@@ -3,6 +3,7 @@ use super::{
 	region::read_memory,
 };
 use crate::{
+	memory::region::load_rel_addr,
 	mhw::{
 		data::{GameData, MonsterInfo, PlayerInfo, SessionInfo},
 		offsets,
@@ -25,24 +26,32 @@ fn get_session_data(pid: Pid, patterns: &[PatternGetter]) -> anyhow::Result<Sess
 		return Ok(info);
 	}
 
-	let start = pattern.mem_location.unwrap().address;
-	trace!("start: {}", start);
+	trace!("pattern: {:#?}", pattern);
 
-	let pointer = read_mem_to_type!(pid, start, usize);
+	let start = pattern.mem_location.unwrap().address;
+	// trace!("start: {}", start);
+
+	let pointer = load_rel_addr(pid, start)?;
+
+	// let pointer = read_mem_to_type!(pid, start, u32) as usize;
 	trace!("pointer: {}", pointer);
 
-	let mem = read_memory(
-		pid,
-		pointer + start + offsets::SESSION_ID,
-		offsets::ID_LENGTH,
-	)?; // Fails here ATM
-	 // since the game uses UTF-8 this should be safe
+	// let rel_pointer = load_rel_addr(pid, pointer)?;
+
+	let debug_ptr = 211829448;
+	let cur_pointer = (pointer + offsets::SESSION_ID) as u32;
+	trace!("cur_pointer: {}", cur_pointer);
+
+	// TODO: fix EFAULT: Bad address
+	// was pointer + offsets::SESSION_ID
+	let mem = read_memory(pid, debug_ptr, offsets::ID_LENGTH)?; // Fails here ATM
+															 // since the game uses UTF-8 this should be safe
 	info.session_id = unsafe { str::from_boxed_utf8_unchecked(mem) };
-	trace!("Got session id");
+	trace!("Got session id '{}'", info.session_id);
 
 	let mem = read_memory(
 		pid,
-		pointer + start + offsets::SESSION_HOST_NAME,
+		pointer as usize + start + offsets::SESSION_HOST_NAME,
 		offsets::PLAYER_NAME_LENGTH,
 	)?;
 	// since the game uses UTF-8 this should be safe
