@@ -1,11 +1,5 @@
-use std::fmt::Display;
-
-use nom::{
-	bytes::streaming::{tag, take},
-	sequence::tuple,
-};
-
 use super::region::MemoryRegion;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum PatternType {
@@ -91,6 +85,10 @@ pub fn get_search_index(first_bytes: &[u8], input: &[u8]) -> Option<usize> {
 	let fb_len = first_bytes.len();
 
 	while i < input.len() - 2 {
+		if i >= inp.len() || fb_len + 8 > inp.len() {
+			return None;
+		}
+
 		let bytes_to_compare = &inp[i..fb_len + i];
 
 		if *bytes_to_compare == *first_bytes {
@@ -109,40 +107,46 @@ pub fn get_search_index(first_bytes: &[u8], input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 38 C6 44 24 20 00 E8 ?? ?? ?? ?? 48 8B 5C 24 70 48 8B 7C 24 60 48 83 C4 68 C3
 pub fn find_player_name(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 37;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 37;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
+	dbg!(&sliced[..TOTAL_LEN]);
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[
-			0x48, 0x8D, 0x54, 0x24, 0x38, 0xC6, 0x44, 0x24, 0x20, 0x00, 0xE8,
-		]),
-		take(4usize),
-		tag(&[
-			0x48, 0x8B, 0x5C, 0x24, 0x70, 0x48, 0x8B, 0x7C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x68,
-			0xC3,
-		]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: [u8; 11] = [
+		0x48, 0x8D, 0x54, 0x24, 0x38, 0xC6, 0x44, 0x24, 0x20, 0x00, 0xE8,
+	];
+
+	const SKIP_2: usize = 4;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + SECTION_2.len() + SKIP_2;
+	const SECTION_3: [u8; 15] = [
+		0x48, 0x8B, 0x5C, 0x24, 0x70, 0x48, 0x8B, 0x7C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x68, 0xC3,
+	];
+
+	// checks if the start of the sliced array is the same as the search pattern
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2..POS_SECTION_2 + SECTION_2.len()] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 	None
@@ -150,35 +154,40 @@ pub fn find_player_name(input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 55 ?? 45 31 C9 41 89 C0 E8
 pub fn find_current_player_name(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 18;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 18;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos: usize = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0x48, 0x8D, 0x55]),
-		take(1usize),
-		tag(&[0x45, 0x31, 0xC9, 0x41, 0x89, 0xC0, 0xE8]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: [u8; 3] = [0x48, 0x8D, 0x55];
+
+	const SKIP_2: usize = 1;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + SECTION_2.len() + SKIP_2;
+	const SECTION_3: [u8; 7] = [0x45, 0x31, 0xC9, 0x41, 0x89, 0xC0, 0xE8];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2..POS_SECTION_2 + SECTION_2.len()] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -187,35 +196,40 @@ pub fn find_current_player_name(input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 04 33 C9
 pub fn find_player_damage(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 22;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 22;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0xE8]),
-		take(4usize),
-		tag(&[0x48, 0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: u8 = 0xE8;
+
+	const SKIP_2: usize = 4;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + 1 + SKIP_2;
+	const SECTION_3: [u8; 10] = [0x48, 0x8B, 0xD8, 0x48, 0x85, 0xC0, 0x75, 0x04, 0x33, 0xC9];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -224,37 +238,46 @@ pub fn find_player_damage(input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? C6 83 ?? ?? ?? ?? ?? 48 8B 0D
 pub fn find_monster(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 24;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 24;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0xB2, 0x01, 0xE8]),
-		take(4usize),
-		tag(&[0xC6, 0x83]),
-		take(5usize),
-		tag(&[0x48, 0x8B, 0x0D]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: [u8; 3] = [0xB2, 0x01, 0xE8];
+
+	const SKIP_2: usize = 4;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + SECTION_2.len() + SKIP_2;
+	const SECTION_3: [u8; 2] = [0xC6, 0x83];
+
+	const SKIP_3: usize = 5;
+
+	const POS_SECTION_4: usize = POS_SECTION_3 + SECTION_3.len() + SKIP_3;
+	const SECTION_4: [u8; 3] = [0x48, 0x8B, 0x0D];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2..POS_SECTION_2 + SECTION_2.len()] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+			&& input[POS_SECTION_4..POS_SECTION_4 + SECTION_4.len()] == SECTION_4
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -263,35 +286,40 @@ pub fn find_monster(input: &[u8]) -> Option<usize> {
 
 // 48 8B 05 ?? ?? ?? ?? 41 8B 94 00 ?? ?? ?? ?? 89 57
 pub fn find_player_buff(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x05];
-	let total_len = 17;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x05];
+	const TOTAL_LEN: usize = 17;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0x41, 0x8B, 0x94, 0x00]),
-		take(4usize),
-		tag(&[0x89, 0x57]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: [u8; 4] = [0x41, 0x8B, 0x94, 0x00];
+
+	const SKIP_2: usize = 4;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + SECTION_2.len() + SKIP_2;
+	const SECTION_3: [u8; 2] = [0x89, 0x57];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2..POS_SECTION_2 + SECTION_2.len()] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -300,45 +328,70 @@ pub fn find_player_buff(input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E ?? F3 0F 10 86 ?? ?? ?? ?? F3 0F 58 86 ?? ?? ?? ?? F3 0F 11 86 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4E
 pub fn find_lobby_status(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 39;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 39;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0xE8]),
-		take(4usize),
-		tag(&[0x48, 0x8B, 0x4E]),
-		take(1usize),
-		tag(&[0xF3, 0x0F, 0x10, 0x86]),
-		take(4usize),
-		tag(&[0xF3, 0x0F, 0x58, 0x86]),
-		take(4usize),
-		tag(&[0xF3, 0x0F, 0x11, 0x86]),
-		take(4usize),
-		tag(&[0xE8]),
-		take(4usize),
-		tag(&[0x48, 0x8B, 0x4E]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: u8 = 0xE8;
+
+	const SKIP_2: usize = 4;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + 1 + SKIP_2;
+	const SECTION_3: [u8; 3] = [0x48, 0x8B, 0x4E];
+
+	const SKIP_3: usize = 1;
+
+	const POS_SECTION_4: usize = POS_SECTION_3 + SECTION_3.len() + SKIP_3;
+	const SECTION_4: [u8; 4] = [0xF3, 0x0F, 0x10, 0x86];
+
+	const SKIP_4: usize = 4;
+
+	const POS_SECTION_5: usize = POS_SECTION_4 + SECTION_4.len() + SKIP_4;
+	const SECTION_5: [u8; 4] = [0xF3, 0x0F, 0x58, 0x86];
+
+	const SKIP_5: usize = 4;
+
+	const POS_SECTION_6: usize = POS_SECTION_5 + SECTION_5.len() + SKIP_5;
+	const SECTION_6: [u8; 4] = [0xF3, 0x0F, 0x11, 0x86];
+
+	const SKIP_6: usize = 4;
+
+	const POS_SECTION_7: usize = POS_SECTION_6 + SECTION_6.len() + SKIP_6;
+	const SECTION_7: u8 = 0xE8;
+
+	const SKIP_7: usize = 4;
+
+	const POS_SECTION_8: usize = POS_SECTION_7 + 1 + SKIP_7;
+	const SECTION_8: [u8; 3] = [0x48, 0x8B, 0x4E];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+			&& input[POS_SECTION_4..POS_SECTION_4 + SECTION_4.len()] == SECTION_4
+			&& input[POS_SECTION_5..POS_SECTION_5 + SECTION_5.len()] == SECTION_5
+			&& input[POS_SECTION_6..POS_SECTION_6 + SECTION_6.len()] == SECTION_6
+			&& input[POS_SECTION_7] == SECTION_7
+			&& input[POS_SECTION_8..POS_SECTION_8 + SECTION_8.len()] == SECTION_8
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -353,37 +406,42 @@ pub fn find_emetta(input: &[u8]) -> Option<usize> {
 
 // 48 8B 0D ?? ?? ?? ?? 48 8D 54 24 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 5C 24 60 48 83 C4 50 5F C3
 pub fn find_player_name_linux(input: &[u8]) -> Option<usize> {
-	let initial_bytes = [0x48, 0x8B, 0x0D];
-	let total_len = 36;
+	const INITIAL_BYTES: [u8; 3] = [0x48, 0x8B, 0x0D];
+	const TOTAL_LEN: usize = 36;
 
 	let mut sliced;
-	let mut pos = get_search_index(&initial_bytes, input)?;
+	let mut pos = get_search_index(&INITIAL_BYTES, input)?;
 	sliced = &input[pos..];
 
-	let mut pattern = tuple((
-		take::<_, _, nom::error::Error<&[u8]>>(initial_bytes.len()),
-		take(4usize),
-		tag(&[0x48, 0x8D, 0x54, 0x24]),
-		take(14usize),
-		tag(&[
-			0x48, 0x8B, 0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3,
-		]),
-	));
+	const SKIP_1: usize = 4;
+
+	const POS_SECTION_2: usize = INITIAL_BYTES.len() + SKIP_1;
+	const SECTION_2: [u8; 4] = [0x48, 0x8D, 0x54, 0x24];
+
+	const SKIP_2: usize = 14;
+
+	const POS_SECTION_3: usize = POS_SECTION_2 + SECTION_2.len() + SKIP_2;
+	const SECTION_3: [u8; 11] = [
+		0x48, 0x8B, 0x5C, 0x24, 0x60, 0x48, 0x83, 0xC4, 0x50, 0x5F, 0xC3,
+	];
+
+	let condition = |input: &[u8]| -> bool {
+		input[POS_SECTION_2..POS_SECTION_2 + SECTION_2.len()] == SECTION_2
+			&& input[POS_SECTION_3..POS_SECTION_3 + SECTION_3.len()] == SECTION_3
+	};
 
 	let mut total_pos = 0;
 
-	// since nom fails to find the pattern, if it matches the first ones partially, but the rest does not match, we need to try again, after removing the first bytes
-	while sliced.len() > total_len {
+	while sliced.len() > TOTAL_LEN {
 		total_pos += pos;
 
-		match pattern(sliced) {
-			Ok((_, _)) => return Some(total_pos),
-			Err(_) => {
-				sliced = &sliced[1..];
-				pos = get_search_index(&initial_bytes, sliced)?;
-				sliced = &sliced[pos..];
-				total_pos += 1;
-			}
+		if condition(sliced) {
+			return Some(total_pos);
+		} else {
+			sliced = &sliced[1..];
+			pos = get_search_index(&INITIAL_BYTES, sliced)?;
+			sliced = &sliced[pos..];
+			total_pos += 1;
 		}
 	}
 
@@ -494,7 +552,9 @@ mod tests {
 
 	#[test]
 	fn test_find_emetta() {
-		let data = vec![0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00];
+		let data = vec![
+			0x00, 0x00, 0x00, 0x00, 0x45, 0x6D, 0x65, 0x74, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00,
+		];
 
 		match find_emetta(&data) {
 			None => panic!("pattern not found"),
